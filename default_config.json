@@ -10,7 +10,8 @@
     "node_font": "Arial",
     "node_font_size": 12,
     "attr_font": "Arial",
-    "attr_font_size": 10,
+    // 12nov was  "attr_font_size": 10,
+    "attr_font_size": 12,
     "mouse_bounding_box": 80,
 
     // Shapes > Edit values BUT do not delete.
@@ -27,8 +28,10 @@
     "grid_color": [50, 50, 50, 255],
     "slot_border": [50, 50, 50, 255],
     "non_connectable_color": [100, 100, 100, 255],
-    "connection_color": [255, 155, 0, 255],
-
+    // 12nov was "connection_color": [255, 155, 0, 255],
+    // this color is all connection, the bezier and text
+    // green is ok  but text is fuzzy   node text is not
+    "connection_color": [0,100,0, 255],
     "node_default": {
         "bg": [130, 130, 130, 255],
         "border": [50, 50, 50, 255],
@@ -38,6 +41,7 @@
 
     "attr_default": {
         "bg": [160, 160, 160, 255],
+	// 12nov was  "text": [220, 220, 220, 255], no diff seen still fuzzy
         "text": [220, 220, 220, 255],
         "plug": [255, 155, 0, 255],
         "socket": [255, 155, 0, 255]
@@ -46,19 +50,29 @@
     // Custom colors > Add and remove as you want.
     // Don't forget to edit the end of the dictionary if editing the
     // following part.
-
+    // 03nov2021 was  "bg": [80, 80, 80, 255],
+    // 12nov  was  "text": [230, 230, 230, 255] tried 0,0,0,255 saw no diff on bex text
     "node_preset_1": {
-        "bg": [80, 80, 80, 255],
+        "bg": [80, 80, 80, 127],
         "border": [50, 50, 50, 255],
         "border_sel": [170, 80, 80, 255],
         "text": [230, 230, 230, 255]
     },
-
+    
+    "node_preset_2": {
+        "bg": [255,165,0,127],
+        "border": [50, 50, 50, 255],
+        "border_sel": [170, 80, 80, 255],
+        "text": [230, 230, 230, 255]
+    },  
+    
+    // 03nov2021 was "bg": [60, 60, 60, 255],
+    // 17dec chg plug and skt transparency from 255 to 50
     "attr_preset_1": {
-        "bg": [60, 60, 60, 255],
+        "bg": [60, 60, 60, 127],
         "text": [220, 220, 220, 255],
-        "plug": [255, 155, 0, 255],
-        "socket": [255, 155, 0, 255]
+        "plug": [255, 155, 0, 50],
+        "socket": [255, 155, 0, 50]
     },
 
     "attr_preset_2":{
