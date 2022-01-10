@@ -40,6 +40,23 @@ Nodz in under the [MIT license](LICENSE.txt).
 [WATCH DEMO HERE](https://vimeo.com/219933604)
 EDIT: tjtr33  a new video is coming
 
+EDIT:
+L  to load
+S  to save
++  to zoom in
+-  to zoom out
+ctrl shift meta left mouse in blank area  to select ALL
+double left mouse click in empty space to deselect ALL
+control shift left mouse drag   to select am area/group
+F to zoom to selected nodes
+F to zoom all ( if nothing selected yet, then ALL will be zoomed )
+R to get back to original zoom
+hover to discover object name and type
+click on a bezier net to delete it
+left mouse drag from a PLUG to a SOCKET
+when a new bezier is dragged near acceptable sockets, they highlight
+
+
 
 
 
