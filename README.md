@@ -1,19 +1,44 @@
-![Screenshot](nodz.png)
+![Screenshot](Nodz-lcnc.png)
 
 Nodz is a very user friendly python library to create nodes based graphs. It can be connected to anything you want as long as it understands python. Nodz does not hold any data other than its own graphics and attributes types as it is used by the graphics.
 Nods provides you with a very simple way to read your graph, it outputs connections as strings ('Node1.attribute1', 'node2.attribute5')
 
 Nodz is partially customizable via a configuration file that let you change colors and the shape of nodes.
 
+EDIT: 10Jan2022 Tjtr33
+changes made for use with Linuxcnc Hal components ( like nodes )
+I am not a professional software developer. Apologies for not
+understanding the program as delivered, not understanding Python,
+and not understanding GIT.
+Please look at the 3 json files SaveMe01... SaveMe02... SaveMe03...
+run the app 'python nodz_demo.py' 
+( I use python 2.7 and will update code to 3 soon )
+Load these files to see how Nodz works with LinuxCNC informations.
+
+The file creation flow:
+The LinuxCNC hal files are loaded into LinuxCNC.
+Then a command is issued to collect all the nodes and connections.
+ halcmd show sig > mysystem.signals
+The file mysystem.signals is processed into json for Nodes.
+The tool to convert mysystem.signals into mysystem.json is
+not uploaded yet ( I suppose that will be a new git repo... )
+
+For the meantime you can see and play with the supplied json files.
+
+Enjoy, tjtr33
+
+
+
 
 ***If you find any errors/bugs/flaws or anything bad, feel free to let me know so I can fix it for the next persons that would like to download nodz.***
+EDIT: tjtr33 i suppose you can contact me thru github, i dunno 
 
 ***PLEASE MAKE SURE TO CREATE 1 PULL REQUEST PER ISSUE ! THIS IS EASIER AND CLEANER TO PROCESS***
 
 Nodz in under the [MIT license](LICENSE.txt).
 
 [WATCH DEMO HERE](https://vimeo.com/219933604)
-
+EDIT: tjtr33  a new video is coming
 
 
 
