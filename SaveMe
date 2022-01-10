@@ -1,0 +1,1678 @@
+{
+    "CONNECTIONS": [
+        [
+            "gv2offset13.0.ArcedOutFlag",
+            "pyvcp.ArcedOutL"
+        ],
+        [
+            "ArcedOutCountsRequiredSource.out",
+            "gv2offset13.0.ArcedOutTimeLimit"
+        ],
+        [
+            "EndLimfSource.out",
+            "gv2offset13.0.EndLim"
+        ],
+        [
+            "EndLimfSource.out",
+            "pyvcp.EndLim"
+        ],
+        [
+            "RetLimfSource.out",
+            "gv2offset13.0.RetLim"
+        ],
+        [
+            "RetLimfSource.out",
+            "pyvcp.RetLim"
+        ],
+        [
+            "gv2offset13.0.SparkedOutFlag",
+            "pyvcp.SparkedOutL"
+        ],
+        [
+            "SparkedOutCountsRequiredSource.out",
+            "gv2offset13.0.SparkedOutTimeLimit"
+        ],
+        [
+            "charge-pump.out",
+            "parport.0.pin-16-out"
+        ],
+        [
+            "gv2offset13.0.eoffsetClear",
+            "axis.z.eoffset-clear"
+        ],
+        [
+            "iocontrol.0.user-enable-out",
+            "charge-pump.enable"
+        ],
+        [
+            "iocontrol.0.user-enable-out",
+            "iocontrol.0.emc-enable-in"
+        ],
+        [
+            "randomGV.GvLo",
+            "gv2offset13.0.GapVlo"
+        ],
+        [
+            "randomGV.GvHi",
+            "gv2offset13.0.GapVhi"
+        ],
+        [
+            "gvHiThresholdSource.out",
+            "randomGV.GvHiThreshold"
+        ],
+        [
+            "gvLoThresholdSource.out",
+            "randomGV.GvLoThreshold"
+        ],
+        [
+            "gv2offset13.0.ena4axisLeoffsetEnable",
+            "axis.z.eoffset-enable"
+        ],
+        [
+            "gv2offset13.0.pgmAbort",
+            "halui.abort"
+        ],
+        [
+            "gv2offset13.0.pgmResume",
+            "halui.program.resume"
+        ],
+        [
+            "gv2offset13.0.pgmPause",
+            "halui.program.pause"
+        ],
+        [
+            "spindle.0.speed-out",
+            "spindle-cmdDest.in"
+        ],
+        [
+            "iocontrol.0.tool-change",
+            "hal_manualtoolchange.change"
+        ],
+        [
+            "hal_manualtoolchange.changed",
+            "iocontrol.0.tool-changed"
+        ],
+        [
+            "iocontrol.0.tool-prep-number",
+            "hal_manualtoolchange.number"
+        ],
+        [
+            "iocontrol.0.tool-prepare",
+            "iocontrol.0.tool-prepared"
+        ],
+        [
+            "stepgen.0.dir",
+            "parport.0.pin-03-out"
+        ],
+        [
+            "joint.0.amp-enable-out",
+            "stepgen.0.enable"
+        ],
+        [
+            "joint.0.motor-pos-cmd",
+            "stepgen.0.position-cmd"
+        ],
+        [
+            "stepgen.0.position-fb",
+            "joint.0.motor-pos-fb"
+        ],
+        [
+            "stepgen.0.step",
+            "parport.0.pin-02-out"
+        ],
+        [
+            "stepgen.1.dir",
+            "parport.0.pin-05-out"
+        ],
+        [
+            "joint.1.amp-enable-out",
+            "stepgen.1.enable"
+        ],
+        [
+            "joint.1.motor-pos-cmd",
+            "stepgen.1.position-cmd"
+        ],
+        [
+            "stepgen.1.position-fb",
+            "joint.1.motor-pos-fb"
+        ],
+        [
+            "stepgen.1.step",
+            "parport.0.pin-04-out"
+        ],
+        [
+            "axis.z.eoffset",
+            "gv2offset13.0.monitor"
+        ],
+        [
+            "axis.z.eoffset",
+            "pyvcp.EdmPosn"
+        ],
+        [
+            "stepgen.2.dir",
+            "parport.0.pin-07-out"
+        ],
+        [
+            "joint.2.amp-enable-out",
+            "stepgen.2.enable"
+        ],
+        [
+            "joint.2.motor-pos-cmd",
+            "stepgen.2.position-cmd"
+        ],
+        [
+            "gv2offset13.0.EDMoffset",
+            "scale.0.in"
+        ],
+        [
+            "scale.0.out",
+            "conv-float-s32.0.in"
+        ],
+        [
+            "conv-float-s32.0.out",
+            "axis.z.eoffset-counts"
+        ],
+        [
+            "stepgen.2.position-fb",
+            "joint.2.motor-pos-fb"
+        ],
+        [
+            "stepgen.2.step",
+            "parport.0.pin-06-out"
+        ]
+    ],
+    "NODES": {
+        "scale.0": {
+            "alternate": "ShowMe",
+            "attributes": [
+                {
+                    "dataType": "<type 'manpage'>",
+                    "cnxnSide": "right",
+                    "name": "ShowMe",
+                    "netname": "-",
+                    "plug": false,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": false,
+                    "socketMaxConnections": 1
+                },
+                {
+                    "dataType": "<type 'float'>",
+                    "cnxnSide": "right",
+                    "name": "in",
+                    "netname": "zpos-edm",
+                    "plug": false,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": true,
+                    "socketMaxConnections": 1
+                },
+                {
+                    "dataType": "<type 'float'>",
+                    "cnxnSide": "right",
+                    "name": "out",
+                    "netname": "zpos-edmScaled",
+                    "plug": true,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": false,
+                    "socketMaxConnections": 1
+                }
+            ],
+            "position": [
+                1,
+                1
+            ],
+            "preset": "node_preset_2"
+        },
+        "randomGV": {
+            "alternate": "ShowMe",
+            "attributes": [
+                {
+                    "dataType": "<type 'manpage'>",
+                    "cnxnSide": "right",
+                    "name": "ShowMe",
+                    "netname": "-",
+                    "plug": false,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": false,
+                    "socketMaxConnections": 1
+                },
+                {
+                    "dataType": "<type 'bit'>",
+                    "cnxnSide": "right",
+                    "name": "GvLo",
+                    "netname": "goBwd",
+                    "plug": true,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": false,
+                    "socketMaxConnections": 1
+                },
+                {
+                    "dataType": "<type 'float'>",
+                    "cnxnSide": "right",
+                    "name": "GvLoThreshold",
+                    "netname": "gvLoThreshold",
+                    "plug": false,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": true,
+                    "socketMaxConnections": 1
+                },
+                {
+                    "dataType": "<type 'bit'>",
+                    "cnxnSide": "right",
+                    "name": "GvHi",
+                    "netname": "goFwd",
+                    "plug": true,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": false,
+                    "socketMaxConnections": 1
+                },
+                {
+                    "dataType": "<type 'float'>",
+                    "cnxnSide": "right",
+                    "name": "GvHiThreshold",
+                    "netname": "gvHiThreshold",
+                    "plug": false,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": true,
+                    "socketMaxConnections": 1
+                }
+            ],
+            "position": [
+                600,
+                1
+            ],
+            "preset": "node_preset_2"
+        },
+        "halui.program": {
+            "alternate": "ShowMe",
+            "attributes": [
+                {
+                    "dataType": "<type 'manpage'>",
+                    "cnxnSide": "right",
+                    "name": "ShowMe",
+                    "netname": "-",
+                    "plug": false,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": false,
+                    "socketMaxConnections": 1
+                },
+                {
+                    "dataType": "<type 'bit'>",
+                    "cnxnSide": "right",
+                    "name": "pause",
+                    "netname": "pgmpause",
+                    "plug": false,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": true,
+                    "socketMaxConnections": 1
+                },
+                {
+                    "dataType": "<type 'bit'>",
+                    "cnxnSide": "right",
+                    "name": "resume",
+                    "netname": "pgmcontinue",
+                    "plug": false,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": true,
+                    "socketMaxConnections": 1
+                }
+            ],
+            "position": [
+                1200,
+                1
+            ],
+            "preset": "node_preset_2"
+        },
+        "charge-pump": {
+            "alternate": "ShowMe",
+            "attributes": [
+                {
+                    "dataType": "<type 'manpage'>",
+                    "cnxnSide": "right",
+                    "name": "ShowMe",
+                    "netname": "-",
+                    "plug": false,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": false,
+                    "socketMaxConnections": 1
+                },
+                {
+                    "dataType": "<type 'bit'>",
+                    "cnxnSide": "right",
+                    "name": "enable",
+                    "netname": "estop-out",
+                    "plug": false,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": true,
+                    "socketMaxConnections": 1
+                },
+                {
+                    "dataType": "<type 'bit'>",
+                    "cnxnSide": "right",
+                    "name": "out",
+                    "netname": "charge-pump",
+                    "plug": true,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": false,
+                    "socketMaxConnections": 1
+                }
+            ],
+            "position": [
+                1800,
+                1
+            ],
+            "preset": "node_preset_2"
+        },
+        "stepgen.0": {
+            "alternate": "ShowMe",
+            "attributes": [
+                {
+                    "dataType": "<type 'manpage'>",
+                    "cnxnSide": "right",
+                    "name": "ShowMe",
+                    "netname": "-",
+                    "plug": false,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": false,
+                    "socketMaxConnections": 1
+                },
+                {
+                    "dataType": "<type 'float'>",
+                    "cnxnSide": "right",
+                    "name": "position-cmd",
+                    "netname": "xpos-cmd",
+                    "plug": false,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": true,
+                    "socketMaxConnections": 1
+                },
+                {
+                    "dataType": "<type 'bit'>",
+                    "cnxnSide": "right",
+                    "name": "enable",
+                    "netname": "xenable",
+                    "plug": false,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": true,
+                    "socketMaxConnections": 1
+                },
+                {
+                    "dataType": "<type 'bit'>",
+                    "cnxnSide": "right",
+                    "name": "dir",
+                    "netname": "xdir",
+                    "plug": true,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": false,
+                    "socketMaxConnections": 1
+                },
+                {
+                    "dataType": "<type 'bit'>",
+                    "cnxnSide": "right",
+                    "name": "step",
+                    "netname": "xstep",
+                    "plug": true,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": false,
+                    "socketMaxConnections": 1
+                },
+                {
+                    "dataType": "<type 'float'>",
+                    "cnxnSide": "right",
+                    "name": "position-fb",
+                    "netname": "xpos-fb",
+                    "plug": true,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": false,
+                    "socketMaxConnections": 1
+                }
+            ],
+            "position": [
+                2400,
+                1
+            ],
+            "preset": "node_preset_2"
+        },
+        "EndLimfSource": {
+            "alternate": "ShowMe",
+            "attributes": [
+                {
+                    "dataType": "<type 'manpage'>",
+                    "cnxnSide": "right",
+                    "name": "ShowMe",
+                    "netname": "-",
+                    "plug": false,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": false,
+                    "socketMaxConnections": 1
+                },
+                {
+                    "dataType": "<type 'float'>",
+                    "cnxnSide": "right",
+                    "name": "out",
+                    "netname": "EndLimf",
+                    "plug": true,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": false,
+                    "socketMaxConnections": 1
+                }
+            ],
+            "position": [
+                3000,
+                1
+            ],
+            "preset": "node_preset_2"
+        },
+        "iocontrol.0": {
+            "alternate": "ShowMe",
+            "attributes": [
+                {
+                    "dataType": "<type 'manpage'>",
+                    "cnxnSide": "right",
+                    "name": "ShowMe",
+                    "netname": "-",
+                    "plug": false,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": false,
+                    "socketMaxConnections": 1
+                },
+                {
+                    "dataType": "<type 'bit'>",
+                    "cnxnSide": "right",
+                    "name": "tool-changed",
+                    "netname": "tool-changed",
+                    "plug": false,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": true,
+                    "socketMaxConnections": 1
+                },
+                {
+                    "dataType": "<type 'bit'>",
+                    "cnxnSide": "right",
+                    "name": "tool-prepare",
+                    "netname": "tool-prepare-loopback",
+                    "plug": true,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": false,
+                    "socketMaxConnections": 1
+                },
+                {
+                    "dataType": "<type 'bit'>",
+                    "cnxnSide": "right",
+                    "name": "tool-prepared",
+                    "netname": "tool-prepare-loopback",
+                    "plug": false,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": true,
+                    "socketMaxConnections": 1
+                },
+                {
+                    "dataType": "<type 's32'>",
+                    "cnxnSide": "right",
+                    "name": "tool-prep-number",
+                    "netname": "tool-number",
+                    "plug": true,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": false,
+                    "socketMaxConnections": 1
+                },
+                {
+                    "dataType": "<type 'bit'>",
+                    "cnxnSide": "right",
+                    "name": "user-enable-out",
+                    "netname": "estop-out",
+                    "plug": true,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": false,
+                    "socketMaxConnections": 1
+                },
+                {
+                    "dataType": "<type 'bit'>",
+                    "cnxnSide": "right",
+                    "name": "emc-enable-in",
+                    "netname": "estop-out",
+                    "plug": false,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": true,
+                    "socketMaxConnections": 1
+                },
+                {
+                    "dataType": "<type 'bit'>",
+                    "cnxnSide": "right",
+                    "name": "tool-change",
+                    "netname": "tool-change",
+                    "plug": true,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": false,
+                    "socketMaxConnections": 1
+                }
+            ],
+            "position": [
+                1,
+                600
+            ],
+            "preset": "node_preset_2"
+        },
+        "joint.1": {
+            "alternate": "ShowMe",
+            "attributes": [
+                {
+                    "dataType": "<type 'manpage'>",
+                    "cnxnSide": "right",
+                    "name": "ShowMe",
+                    "netname": "-",
+                    "plug": false,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": false,
+                    "socketMaxConnections": 1
+                },
+                {
+                    "dataType": "<type 'float'>",
+                    "cnxnSide": "right",
+                    "name": "motor-pos-fb",
+                    "netname": "ypos-fb",
+                    "plug": false,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": true,
+                    "socketMaxConnections": 1
+                },
+                {
+                    "dataType": "<type 'bit'>",
+                    "cnxnSide": "right",
+                    "name": "amp-enable-out",
+                    "netname": "yenable",
+                    "plug": true,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": false,
+                    "socketMaxConnections": 1
+                },
+                {
+                    "dataType": "<type 'float'>",
+                    "cnxnSide": "right",
+                    "name": "motor-pos-cmd",
+                    "netname": "ypos-cmd",
+                    "plug": true,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": false,
+                    "socketMaxConnections": 1
+                }
+            ],
+            "position": [
+                600,
+                600
+            ],
+            "preset": "node_preset_2"
+        },
+        "stepgen.2": {
+            "alternate": "ShowMe",
+            "attributes": [
+                {
+                    "dataType": "<type 'manpage'>",
+                    "cnxnSide": "right",
+                    "name": "ShowMe",
+                    "netname": "-",
+                    "plug": false,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": false,
+                    "socketMaxConnections": 1
+                },
+                {
+                    "dataType": "<type 'float'>",
+                    "cnxnSide": "right",
+                    "name": "position-cmd",
+                    "netname": "zpos-cmd",
+                    "plug": false,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": true,
+                    "socketMaxConnections": 1
+                },
+                {
+                    "dataType": "<type 'bit'>",
+                    "cnxnSide": "right",
+                    "name": "enable",
+                    "netname": "zenable",
+                    "plug": false,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": true,
+                    "socketMaxConnections": 1
+                },
+                {
+                    "dataType": "<type 'bit'>",
+                    "cnxnSide": "right",
+                    "name": "dir",
+                    "netname": "zdir",
+                    "plug": true,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": false,
+                    "socketMaxConnections": 1
+                },
+                {
+                    "dataType": "<type 'bit'>",
+                    "cnxnSide": "right",
+                    "name": "step",
+                    "netname": "zstep",
+                    "plug": true,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": false,
+                    "socketMaxConnections": 1
+                },
+                {
+                    "dataType": "<type 'float'>",
+                    "cnxnSide": "right",
+                    "name": "position-fb",
+                    "netname": "zpos-fb",
+                    "plug": true,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": false,
+                    "socketMaxConnections": 1
+                }
+            ],
+            "position": [
+                1200,
+                600
+            ],
+            "preset": "node_preset_2"
+        },
+        "parport.0": {
+            "alternate": "ShowMe",
+            "attributes": [
+                {
+                    "dataType": "<type 'manpage'>",
+                    "cnxnSide": "right",
+                    "name": "ShowMe",
+                    "netname": "-",
+                    "plug": false,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": false,
+                    "socketMaxConnections": 1
+                },
+                {
+                    "dataType": "<type 'bit'>",
+                    "cnxnSide": "right",
+                    "name": "pin-05-out",
+                    "netname": "ydir",
+                    "plug": false,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": true,
+                    "socketMaxConnections": 1
+                },
+                {
+                    "dataType": "<type 'bit'>",
+                    "cnxnSide": "right",
+                    "name": "pin-02-out",
+                    "netname": "xstep",
+                    "plug": false,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": true,
+                    "socketMaxConnections": 1
+                },
+                {
+                    "dataType": "<type 'bit'>",
+                    "cnxnSide": "right",
+                    "name": "pin-16-out",
+                    "netname": "charge-pump",
+                    "plug": false,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": true,
+                    "socketMaxConnections": 1
+                },
+                {
+                    "dataType": "<type 'bit'>",
+                    "cnxnSide": "right",
+                    "name": "pin-04-out",
+                    "netname": "ystep",
+                    "plug": false,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": true,
+                    "socketMaxConnections": 1
+                },
+                {
+                    "dataType": "<type 'bit'>",
+                    "cnxnSide": "right",
+                    "name": "pin-06-out",
+                    "netname": "zstep",
+                    "plug": false,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": true,
+                    "socketMaxConnections": 1
+                },
+                {
+                    "dataType": "<type 'bit'>",
+                    "cnxnSide": "right",
+                    "name": "pin-07-out",
+                    "netname": "zdir",
+                    "plug": false,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": true,
+                    "socketMaxConnections": 1
+                },
+                {
+                    "dataType": "<type 'bit'>",
+                    "cnxnSide": "right",
+                    "name": "pin-03-out",
+                    "netname": "xdir",
+                    "plug": false,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": true,
+                    "socketMaxConnections": 1
+                }
+            ],
+            "position": [
+                1800,
+                600
+            ],
+            "preset": "node_preset_2"
+        },
+        "SparkedOutCountsRequiredSource": {
+            "alternate": "ShowMe",
+            "attributes": [
+                {
+                    "dataType": "<type 'manpage'>",
+                    "cnxnSide": "right",
+                    "name": "ShowMe",
+                    "netname": "-",
+                    "plug": false,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": false,
+                    "socketMaxConnections": 1
+                },
+                {
+                    "dataType": "<type 'float'>",
+                    "cnxnSide": "right",
+                    "name": "out",
+                    "netname": "SparkedOutCountsRequired",
+                    "plug": true,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": false,
+                    "socketMaxConnections": 1
+                }
+            ],
+            "position": [
+                2400,
+                600
+            ],
+            "preset": "node_preset_2"
+        },
+        "ArcedOutCountsRequiredSource": {
+            "alternate": "ShowMe",
+            "attributes": [
+                {
+                    "dataType": "<type 'manpage'>",
+                    "cnxnSide": "right",
+                    "name": "ShowMe",
+                    "netname": "-",
+                    "plug": false,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": false,
+                    "socketMaxConnections": 1
+                },
+                {
+                    "dataType": "<type 'float'>",
+                    "cnxnSide": "right",
+                    "name": "out",
+                    "netname": "ArcedOutCountsRequired",
+                    "plug": true,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": false,
+                    "socketMaxConnections": 1
+                }
+            ],
+            "position": [
+                3000,
+                600
+            ],
+            "preset": "node_preset_2"
+        },
+        "joint.0": {
+            "alternate": "ShowMe",
+            "attributes": [
+                {
+                    "dataType": "<type 'manpage'>",
+                    "cnxnSide": "right",
+                    "name": "ShowMe",
+                    "netname": "-",
+                    "plug": false,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": false,
+                    "socketMaxConnections": 1
+                },
+                {
+                    "dataType": "<type 'float'>",
+                    "cnxnSide": "right",
+                    "name": "motor-pos-fb",
+                    "netname": "xpos-fb",
+                    "plug": false,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": true,
+                    "socketMaxConnections": 1
+                },
+                {
+                    "dataType": "<type 'bit'>",
+                    "cnxnSide": "right",
+                    "name": "amp-enable-out",
+                    "netname": "xenable",
+                    "plug": true,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": false,
+                    "socketMaxConnections": 1
+                },
+                {
+                    "dataType": "<type 'float'>",
+                    "cnxnSide": "right",
+                    "name": "motor-pos-cmd",
+                    "netname": "xpos-cmd",
+                    "plug": true,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": false,
+                    "socketMaxConnections": 1
+                }
+            ],
+            "position": [
+                1,
+                1200
+            ],
+            "preset": "node_preset_2"
+        },
+        "gvHiThresholdSource": {
+            "alternate": "ShowMe",
+            "attributes": [
+                {
+                    "dataType": "<type 'manpage'>",
+                    "cnxnSide": "right",
+                    "name": "ShowMe",
+                    "netname": "-",
+                    "plug": false,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": false,
+                    "socketMaxConnections": 1
+                },
+                {
+                    "dataType": "<type 'float'>",
+                    "cnxnSide": "right",
+                    "name": "out",
+                    "netname": "gvHiThreshold",
+                    "plug": true,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": false,
+                    "socketMaxConnections": 1
+                }
+            ],
+            "position": [
+                600,
+                1200
+            ],
+            "preset": "node_preset_2"
+        },
+        "gvLoThresholdSource": {
+            "alternate": "ShowMe",
+            "attributes": [
+                {
+                    "dataType": "<type 'manpage'>",
+                    "cnxnSide": "right",
+                    "name": "ShowMe",
+                    "netname": "-",
+                    "plug": false,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": false,
+                    "socketMaxConnections": 1
+                },
+                {
+                    "dataType": "<type 'float'>",
+                    "cnxnSide": "right",
+                    "name": "out",
+                    "netname": "gvLoThreshold",
+                    "plug": true,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": false,
+                    "socketMaxConnections": 1
+                }
+            ],
+            "position": [
+                1200,
+                1200
+            ],
+            "preset": "node_preset_2"
+        },
+        "RetLimfSource": {
+            "alternate": "ShowMe",
+            "attributes": [
+                {
+                    "dataType": "<type 'manpage'>",
+                    "cnxnSide": "right",
+                    "name": "ShowMe",
+                    "netname": "-",
+                    "plug": false,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": false,
+                    "socketMaxConnections": 1
+                },
+                {
+                    "dataType": "<type 'float'>",
+                    "cnxnSide": "right",
+                    "name": "out",
+                    "netname": "RetLimf",
+                    "plug": true,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": false,
+                    "socketMaxConnections": 1
+                }
+            ],
+            "position": [
+                1800,
+                1200
+            ],
+            "preset": "node_preset_2"
+        },
+        "joint.2": {
+            "alternate": "ShowMe",
+            "attributes": [
+                {
+                    "dataType": "<type 'manpage'>",
+                    "cnxnSide": "right",
+                    "name": "ShowMe",
+                    "netname": "-",
+                    "plug": false,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": false,
+                    "socketMaxConnections": 1
+                },
+                {
+                    "dataType": "<type 'float'>",
+                    "cnxnSide": "right",
+                    "name": "motor-pos-fb",
+                    "netname": "zpos-fb",
+                    "plug": false,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": true,
+                    "socketMaxConnections": 1
+                },
+                {
+                    "dataType": "<type 'bit'>",
+                    "cnxnSide": "right",
+                    "name": "amp-enable-out",
+                    "netname": "zenable",
+                    "plug": true,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": false,
+                    "socketMaxConnections": 1
+                },
+                {
+                    "dataType": "<type 'float'>",
+                    "cnxnSide": "right",
+                    "name": "motor-pos-cmd",
+                    "netname": "zpos-cmd",
+                    "plug": true,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": false,
+                    "socketMaxConnections": 1
+                }
+            ],
+            "position": [
+                2400,
+                1200
+            ],
+            "preset": "node_preset_2"
+        },
+        "halui": {
+            "alternate": "ShowMe",
+            "attributes": [
+                {
+                    "dataType": "<type 'manpage'>",
+                    "cnxnSide": "right",
+                    "name": "ShowMe",
+                    "netname": "-",
+                    "plug": false,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": false,
+                    "socketMaxConnections": 1
+                },
+                {
+                    "dataType": "<type 'bit'>",
+                    "cnxnSide": "right",
+                    "name": "abort",
+                    "netname": "pgmabort",
+                    "plug": false,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": true,
+                    "socketMaxConnections": 1
+                }
+            ],
+            "position": [
+                3000,
+                1200
+            ],
+            "preset": "node_preset_2"
+        },
+        "pyvcp": {
+            "alternate": "ShowMe",
+            "attributes": [
+                {
+                    "dataType": "<type 'manpage'>",
+                    "cnxnSide": "right",
+                    "name": "ShowMe",
+                    "netname": "-",
+                    "plug": false,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": false,
+                    "socketMaxConnections": 1
+                },
+                {
+                    "dataType": "<type 'bit'>",
+                    "cnxnSide": "right",
+                    "name": "ArcedOutL",
+                    "netname": "ArcedOut",
+                    "plug": false,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": true,
+                    "socketMaxConnections": 1
+                },
+                {
+                    "dataType": "<type 'bit'>",
+                    "cnxnSide": "right",
+                    "name": "SparkedOutL",
+                    "netname": "SparkedOut",
+                    "plug": false,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": true,
+                    "socketMaxConnections": 1
+                },
+                {
+                    "dataType": "<type 'float'>",
+                    "cnxnSide": "right",
+                    "name": "EndLim",
+                    "netname": "EndLimf",
+                    "plug": false,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": true,
+                    "socketMaxConnections": 1
+                },
+                {
+                    "dataType": "<type 'float'>",
+                    "cnxnSide": "right",
+                    "name": "EdmPosn",
+                    "netname": "zEdmPosn",
+                    "plug": false,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": true,
+                    "socketMaxConnections": 1
+                },
+                {
+                    "dataType": "<type 'float'>",
+                    "cnxnSide": "right",
+                    "name": "RetLim",
+                    "netname": "RetLimf",
+                    "plug": false,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": true,
+                    "socketMaxConnections": 1
+                }
+            ],
+            "position": [
+                1,
+                1800
+            ],
+            "preset": "node_preset_2"
+        },
+        "hal_manualtoolchange": {
+            "alternate": "ShowMe",
+            "attributes": [
+                {
+                    "dataType": "<type 'manpage'>",
+                    "cnxnSide": "right",
+                    "name": "ShowMe",
+                    "netname": "-",
+                    "plug": false,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": false,
+                    "socketMaxConnections": 1
+                },
+                {
+                    "dataType": "<type 'bit'>",
+                    "cnxnSide": "right",
+                    "name": "changed",
+                    "netname": "tool-changed",
+                    "plug": true,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": false,
+                    "socketMaxConnections": 1
+                },
+                {
+                    "dataType": "<type 's32'>",
+                    "cnxnSide": "right",
+                    "name": "number",
+                    "netname": "tool-number",
+                    "plug": false,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": true,
+                    "socketMaxConnections": 1
+                },
+                {
+                    "dataType": "<type 'bit'>",
+                    "cnxnSide": "right",
+                    "name": "change",
+                    "netname": "tool-change",
+                    "plug": false,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": true,
+                    "socketMaxConnections": 1
+                }
+            ],
+            "position": [
+                600,
+                1800
+            ],
+            "preset": "node_preset_2"
+        },
+        "conv-float-s32.0": {
+            "alternate": "ShowMe",
+            "attributes": [
+                {
+                    "dataType": "<type 'manpage'>",
+                    "cnxnSide": "right",
+                    "name": "ShowMe",
+                    "netname": "-",
+                    "plug": false,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": false,
+                    "socketMaxConnections": 1
+                },
+                {
+                    "dataType": "<type 'float'>",
+                    "cnxnSide": "right",
+                    "name": "in",
+                    "netname": "zpos-edmScaled",
+                    "plug": false,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": true,
+                    "socketMaxConnections": 1
+                },
+                {
+                    "dataType": "<type 's32'>",
+                    "cnxnSide": "right",
+                    "name": "out",
+                    "netname": "zpos-edmU32",
+                    "plug": true,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": false,
+                    "socketMaxConnections": 1
+                }
+            ],
+            "position": [
+                1200,
+                1800
+            ],
+            "preset": "node_preset_2"
+        },
+        "spindle.0": {
+            "alternate": "ShowMe",
+            "attributes": [
+                {
+                    "dataType": "<type 'manpage'>",
+                    "cnxnSide": "right",
+                    "name": "ShowMe",
+                    "netname": "-",
+                    "plug": false,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": false,
+                    "socketMaxConnections": 1
+                },
+                {
+                    "dataType": "<type 'float'>",
+                    "cnxnSide": "right",
+                    "name": "speed-out",
+                    "netname": "spindle-cmd",
+                    "plug": true,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": false,
+                    "socketMaxConnections": 1
+                }
+            ],
+            "position": [
+                1800,
+                1800
+            ],
+            "preset": "node_preset_2"
+        },
+        "stepgen.1": {
+            "alternate": "ShowMe",
+            "attributes": [
+                {
+                    "dataType": "<type 'manpage'>",
+                    "cnxnSide": "right",
+                    "name": "ShowMe",
+                    "netname": "-",
+                    "plug": false,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": false,
+                    "socketMaxConnections": 1
+                },
+                {
+                    "dataType": "<type 'float'>",
+                    "cnxnSide": "right",
+                    "name": "position-cmd",
+                    "netname": "ypos-cmd",
+                    "plug": false,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": true,
+                    "socketMaxConnections": 1
+                },
+                {
+                    "dataType": "<type 'bit'>",
+                    "cnxnSide": "right",
+                    "name": "enable",
+                    "netname": "yenable",
+                    "plug": false,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": true,
+                    "socketMaxConnections": 1
+                },
+                {
+                    "dataType": "<type 'bit'>",
+                    "cnxnSide": "right",
+                    "name": "dir",
+                    "netname": "ydir",
+                    "plug": true,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": false,
+                    "socketMaxConnections": 1
+                },
+                {
+                    "dataType": "<type 'bit'>",
+                    "cnxnSide": "right",
+                    "name": "step",
+                    "netname": "ystep",
+                    "plug": true,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": false,
+                    "socketMaxConnections": 1
+                },
+                {
+                    "dataType": "<type 'float'>",
+                    "cnxnSide": "right",
+                    "name": "position-fb",
+                    "netname": "ypos-fb",
+                    "plug": true,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": false,
+                    "socketMaxConnections": 1
+                }
+            ],
+            "position": [
+                2400,
+                1800
+            ],
+            "preset": "node_preset_2"
+        },
+        "axis.z": {
+            "alternate": "ShowMe",
+            "attributes": [
+                {
+                    "dataType": "<type 'manpage'>",
+                    "cnxnSide": "right",
+                    "name": "ShowMe",
+                    "netname": "-",
+                    "plug": false,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": false,
+                    "socketMaxConnections": 1
+                },
+                {
+                    "dataType": "<type 'float'>",
+                    "cnxnSide": "right",
+                    "name": "eoffset",
+                    "netname": "zEdmPosn",
+                    "plug": true,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": false,
+                    "socketMaxConnections": 1
+                },
+                {
+                    "dataType": "<type 's32'>",
+                    "cnxnSide": "right",
+                    "name": "eoffset-counts",
+                    "netname": "zpos-edmU32",
+                    "plug": false,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": true,
+                    "socketMaxConnections": 1
+                },
+                {
+                    "dataType": "<type 'bit'>",
+                    "cnxnSide": "right",
+                    "name": "eoffset-clear",
+                    "netname": "clearEoffset",
+                    "plug": false,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": true,
+                    "socketMaxConnections": 1
+                },
+                {
+                    "dataType": "<type 'bit'>",
+                    "cnxnSide": "right",
+                    "name": "eoffset-enable",
+                    "netname": "myena",
+                    "plug": false,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": true,
+                    "socketMaxConnections": 1
+                }
+            ],
+            "position": [
+                3000,
+                1800
+            ],
+            "preset": "node_preset_2"
+        },
+        "spindle-cmdDest": {
+            "alternate": "ShowMe",
+            "attributes": [
+                {
+                    "dataType": "<type 'manpage'>",
+                    "cnxnSide": "right",
+                    "name": "ShowMe",
+                    "netname": "-",
+                    "plug": false,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": false,
+                    "socketMaxConnections": 1
+                },
+                {
+                    "dataType": "<type 'float'>",
+                    "cnxnSide": "right",
+                    "name": "in",
+                    "netname": "-",
+                    "plug": false,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": true,
+                    "socketMaxConnections": 1
+                }
+            ],
+            "position": [
+                1,
+                2400
+            ],
+            "preset": "node_preset_2"
+        },
+        "gv2offset13.0": {
+            "alternate": "ShowMe",
+            "attributes": [
+                {
+                    "dataType": "<type 'manpage'>",
+                    "cnxnSide": "right",
+                    "name": "ShowMe",
+                    "netname": "-",
+                    "plug": false,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": false,
+                    "socketMaxConnections": 1
+                },
+                {
+                    "dataType": "<type 'bit'>",
+                    "cnxnSide": "right",
+                    "name": "ena4axisLeoffsetEnable",
+                    "netname": "myena",
+                    "plug": true,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": false,
+                    "socketMaxConnections": 1
+                },
+                {
+                    "dataType": "<type 'float'>",
+                    "cnxnSide": "right",
+                    "name": "EDMoffset",
+                    "netname": "zpos-edm",
+                    "plug": true,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": false,
+                    "socketMaxConnections": 1
+                },
+                {
+                    "dataType": "<type 'float'>",
+                    "cnxnSide": "right",
+                    "name": "SparkedOutTimeLimit",
+                    "netname": "SparkedOutCountsRequired",
+                    "plug": false,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": true,
+                    "socketMaxConnections": 1
+                },
+                {
+                    "dataType": "<type 'bit'>",
+                    "cnxnSide": "right",
+                    "name": "pgmAbort",
+                    "netname": "pgmabort",
+                    "plug": true,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": false,
+                    "socketMaxConnections": 1
+                },
+                {
+                    "dataType": "<type 'float'>",
+                    "cnxnSide": "right",
+                    "name": "ArcedOutTimeLimit",
+                    "netname": "ArcedOutCountsRequired",
+                    "plug": false,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": true,
+                    "socketMaxConnections": 1
+                },
+                {
+                    "dataType": "<type 'bit'>",
+                    "cnxnSide": "right",
+                    "name": "ArcedOutFlag",
+                    "netname": "ArcedOut",
+                    "plug": true,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": false,
+                    "socketMaxConnections": 1
+                },
+                {
+                    "dataType": "<type 'bit'>",
+                    "cnxnSide": "right",
+                    "name": "SparkedOutFlag",
+                    "netname": "SparkedOut",
+                    "plug": true,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": false,
+                    "socketMaxConnections": 1
+                },
+                {
+                    "dataType": "<type 'bit'>",
+                    "cnxnSide": "right",
+                    "name": "pgmPause",
+                    "netname": "pgmpause",
+                    "plug": true,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": false,
+                    "socketMaxConnections": 1
+                },
+                {
+                    "dataType": "<type 'bit'>",
+                    "cnxnSide": "right",
+                    "name": "eoffsetClear",
+                    "netname": "clearEoffset",
+                    "plug": true,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": false,
+                    "socketMaxConnections": 1
+                },
+                {
+                    "dataType": "<type 'float'>",
+                    "cnxnSide": "right",
+                    "name": "EndLim",
+                    "netname": "EndLimf",
+                    "plug": false,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": true,
+                    "socketMaxConnections": 1
+                },
+                {
+                    "dataType": "<type 'bit'>",
+                    "cnxnSide": "right",
+                    "name": "pgmResume",
+                    "netname": "pgmcontinue",
+                    "plug": true,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": false,
+                    "socketMaxConnections": 1
+                },
+                {
+                    "dataType": "<type 'bit'>",
+                    "cnxnSide": "right",
+                    "name": "GapVhi",
+                    "netname": "goFwd",
+                    "plug": false,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": true,
+                    "socketMaxConnections": 1
+                },
+                {
+                    "dataType": "<type 'float'>",
+                    "cnxnSide": "right",
+                    "name": "monitor",
+                    "netname": "zEdmPosn",
+                    "plug": false,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": true,
+                    "socketMaxConnections": 1
+                },
+                {
+                    "dataType": "<type 'bit'>",
+                    "cnxnSide": "right",
+                    "name": "GapVlo",
+                    "netname": "goBwd",
+                    "plug": false,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": true,
+                    "socketMaxConnections": 1
+                },
+                {
+                    "dataType": "<type 'float'>",
+                    "cnxnSide": "right",
+                    "name": "RetLim",
+                    "netname": "RetLimf",
+                    "plug": false,
+                    "plugMaxConnections": -1,
+                    "preset": "attr_preset_1",
+                    "socket": true,
+                    "socketMaxConnections": 1
+                }
+            ],
+            "position": [
+                600,
+                2400
+            ],
+            "preset": "node_preset_2"
+        }
+    }
+}
