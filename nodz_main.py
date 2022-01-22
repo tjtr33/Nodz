@@ -1,22 +1,28 @@
 import os
 import re
 import json
-#19dec for running KiCad on project file
-#import subprocess
 import sys
 
-from PyQt5 import QtGui, QtCore, QtWidgets, QtSvg
 from PyQt5 import QtGui, QtCore, QtWidgets, QtSvg
 from PyQt5.QtWidgets import QApplication, QMessageBox, QDialog, QPushButton, QLabel
 from PyQt5.QtGui import QPixmap
 from PyQt5.Qt import *
 
-#from PyQt5.QtCore import *
-#from PyQt5.QtGui import *
-#from PyQt5.QtWidgets import *
-
-
 import nodz_utils as utils
+#22jan2022 incorporate showpin to json helpers
+#  all inside thios file now   import showPin2json as spjs
+
+#nodzd needs to be global?
+nodzd = {}
+
+#22jan2022  i need to do twice??? in 2 files??? seems wrong
+# these lines give real value to tokens rtnd by several funcs
+isFirstLine  = 1
+notFirstLine = 0
+isPlugLine   = 2
+isSocketLine = 3
+notPinLine   = 0
+
 
 #27nov TODO  use a better file name
 #05dec this value is initial, it can be chgd by a node's 'alternate'
@@ -29,16 +35,8 @@ import nodz_utils as utils
 # with no attributes, only a node.alternate
 # that can be used to return to parent by putting parents filePath string in that var
 #
-#09jan TODO maybe chg to workingFile
-# or get it from a file picker when L is pressed
-#filePath = "./SaveMe"
 #09jan2022 chg from global filePath to workingFile  bein null$ , use fpicker
 workingFile = ""
-
-#09jan2022 zoom infactor outFactor no longger used
-#zoomScale = 1
-#inFactor = 1.03
-#outFactor = 1 / 1.03
 
 # 06nov2021  heavy handed global aliasing
 QtCore.Signal = QtCore.pyqtSignal
@@ -89,7 +87,7 @@ class Nodz(QtWidgets.QGraphicsView):
         """
          Initialize the graphics view.
         """
-	# class Nodz  func __init__
+    # class Nodz  func __init__
         super(Nodz, self).__init__(parent)
 
         # Load nodz configuration.
@@ -99,7 +97,7 @@ class Nodz(QtWidgets.QGraphicsView):
         self.gridVisToggle = True
         self.gridSnapToggle = False
         self._nodeSnap = False
-	#08jan selectedNodes is invented by author it is not a property in qt
+    #08jan selectedNodes is invented by author it is not a property in qt
         self.selectedNodes = None
 
         # Connections data.
@@ -111,37 +109,256 @@ class Nodz(QtWidgets.QGraphicsView):
         self.currentState = 'DEFAULT'
         self.pressedKeys = list()
 
-    #09jan2022 a fsaver dlog found on web for pyqt5
-    # does not do saveGraph (yet) just prints chosenFile to console
-    # note saveGraph gets fname passed
-    def getFileNameForSave(self,suggestedFname):
-        options = QFileDialog.Options()
-        options |= QFileDialog.DontUseNativeDialog
-        #fileName, _ = QFileDialog.getSaveFileName(self,"QFileDialog.getSaveFileName()","","All Files (*);;Text Files (*.txt)", options=options)
-        fileName, _ = QFileDialog.getSaveFileName(self,"Save Graph to File",suggestedFname,"All Files (*);;Text Files (*.txt)", options=options)
-	#svDlg.getSaveFileName(this, caption, preferredName, filter);
-
-	#09jan2022 return filename if null or not, just return it
-	return fileName
-	    
-    #17dec  found on web vvv but if here it belongs to class Nodz
-    # and my use case is down in slot/plug/socket
-    # 
-    # 1st try to make po[up appear
-    # and be able to get rid of popup
-
+    #15jan long ago i removed the wheel event- 
+    # just didnt work debian 9 xfce4 pyqt5 env
+    # i hacked in PLUS and MINUS key code to zoom in and out
+    #def wheelEvent(self, event):
+        
+    #funcs to get fnames for open and save
     def getFileNameForOpen(self):
-	#09jan2022 uses global  workingFile
+        #22jan2022 i think i dont need to have self in the parens
+        #17dec  found on web vvv but if here it belongs to class Nodz
+        # and my use case is down in slot/plug/socket
         options = QFileDialog.Options()
         options |= QFileDialog.DontUseNativeDialog
-        fileName, _ = QFileDialog.getOpenFileName(self,"Graph File to Load",workingFile,"All Files (*);;Text Files (*.txt)", options=options)
-        #files, _ = QFileDialog.getOpenFileNames(self,"QFileDialog.getOpenFileNames()", "","All Files (*);;Python Files (*.py)", options=options)
-        #if fileName:
-        #    print(fileName)    
-	return fileName    
-    #def doit(self,wide,high):
-    #18dec MyPopup gets self, so it can find img filename in self.alternate
+        fileName, _ = QFileDialog.getOpenFileName(self,"File to Load",workingFile,"All Files (*);;Text Files (*.txt)", options=options)
+        #print("in getFileNameForOpen ", fileName)
+        return fileName    
 
+    def getFileNameForSave(self,suggestedFname):
+        #22jan2022 i think i dont need to have self in the parens
+        #09jan2022 a fsaver dlog found on web for pyqt5
+        # note saveGraph gets fname passed
+        options = QFileDialog.Options()
+        options |= QFileDialog.DontUseNativeDialog
+        fileName, _ = QFileDialog.getSaveFileName(self,"Save to File",suggestedFname,"All Files (*);;Text Files (*.txt)", options=options)
+        return fileName
+
+    
+    def rowcol(self,ndx,gridW):
+        rnum= int(ndx / gridW)
+        cnum= ndx -( rnum * gridW)
+        return rnum,cnum
+
+    def chkFirstLine(self,line):
+        first3char = line[:3]
+        if((first3char == 'bit' ) or (first3char == 'flo' ) or (first3char == 'u32' ) or (first3char == 's32' )):
+            return isFirstLine
+        else:
+            return notFirstLine
+
+    def extractDatatypeNetname(self,line):
+        lparts=[]
+        lparts=line.split(" ")
+        dataType=lparts[0]
+        netName = lparts[len(lparts)-1]
+        return dataType, netName
+    
+    def chkPinDir(self,line):
+        first3char = line[:3]
+        if first3char == '<==' :
+            return isPlugLine
+        else:
+            if first3char == "==>":
+                return isSocketLine
+            else:
+                return notPinLine
+
+    def getNodePinName(self,fullName):
+        lparts=[]
+        lparts=fullName.rsplit(".",1)
+        nodeName=lparts[0]
+        pinName=lparts[1]
+        return nodeName, pinName
+
+    def printOneAttrBlock(self,nodeName, pinName,lp):
+        global nodzd
+        strg1="\t\t\t\t{\n"
+        nodzFile.write( strg1)
+        strg1="\t\t\t\t\t\"dataType\": \"<type '"
+    
+        #22jan2022 ShowMe has no datatype, use 'npne' until edited by user
+        # thats up to user to edit hypermedia filename and datatype
+        if(pinName == "ShowMe"):
+            strg2="none"
+        else:
+            strg2=nodzd[nodeName][pinName]['datatype']
+        strg3="'>\",\n"
+        strg4=strg1+strg2+strg3
+        nodzFile.write(strg4)
+    
+        strg1="\t\t\t\t\t\"cnxnSide\": \"right\",\n"
+        if(pinName == "ShowMe"):
+            strg1="\t\t\t\t\t\"cnxnSide\": \"none\",\n"
+        nodzFile.write( strg1)
+    
+        strg1="\t\t\t\t\t\"name\": \""
+        strg2=pinName
+        strg3="\",\n"
+        strg4=strg1+strg2+strg3
+        nodzFile.write( strg4)
+    
+        strg1="\t\t\t\t\t\"netname\": \""
+        if(pinName == "ShowMe"):
+            strg2="-"
+        else:
+            strg2=nodzd[nodeName][pinName]['netname']
+        strg3="\",\n"
+        strg4=strg1+strg2+strg3
+        nodzFile.write(strg4)
+    
+        strg1="\t\t\t\t\t\"plug\": "
+        if(pinName == "ShowMe"):
+            strg2="false"
+        else:
+            pinIsPlug = nodzd[nodeName][pinName]['isPlug']
+            strg2="false"
+            if pinIsPlug:
+                strg2="true"
+        strg3=",\n"
+        strg4=strg1+strg2+strg3
+        nodzFile.write(strg4)
+    
+        strg1="\t\t\t\t\t\"plugMaxConnections\": -1,\n"
+        nodzFile.write( strg1)
+    
+        strg1="\t\t\t\t\t\"preset\": \"attr_preset_1\",\n"
+        nodzFile.write( strg1)
+    
+        strg1="\t\t\t\t\t\"socket\": "
+        if(pinName == "ShowMe"):
+            strg2="false"
+        else:
+            pinIsSocket = nodzd[nodeName][pinName]['isSocket']
+            strg2="false"
+            if pinIsSocket:
+                strg2="true"
+        strg3=",\n"
+        strg4=strg1+strg2+strg3
+        nodzFile.write(strg4)
+    
+        strg1="\t\t\t\t\t\"socketMaxConnections\": 1\n"
+        nodzFile.write( strg1)
+    
+        strg1="\t\t\t\t}"
+        if not lp:
+            strg1=strg1+","
+        strg1=strg1+"\n"
+        nodzFile.write( strg1)
+
+    def nodeTail(self,lastNode, numNodesPrinted, gridSide, gridPixels):
+        # this is a tail.suffix for each node, not for whole NODES stanza
+    
+        strg1="\t\t\t\"position\": [\n"
+        nodzFile.write( strg1)
+
+        row,col = self.rowcol(numNodesPrinted,gridSide)
+    
+        xpixels = col * gridPixels
+        if xpixels == 0:
+            xpixels += 1
+        strg1="\t\t\t\t"
+        strg2=str(xpixels)
+        strg3=",\n"
+        strg4=strg1+strg2+strg3
+        nodzFile.write(strg4)
+        
+        ypixels = row * gridPixels
+        if ypixels == 0:
+            ypixels += 1
+        strg1="\t\t\t\t"
+        strg2=str(ypixels)
+        strg3="\n"
+        strg4=strg1+strg2+strg3
+        nodzFile.write(strg4)
+    
+        strg1="\t\t\t],\n"
+        nodzFile.write( strg1)
+    
+        strg1="\t\t\t\"preset\": \"node_preset_2\"\n"
+        nodzFile.write( strg1)
+    
+        strg1="\t\t}"
+        if not lastNode:
+            strg1=strg1+","
+        strg1=strg1+"\n"
+    
+        nodzFile.write( strg1)
+
+    def storePinfo(self,nodeName,pinName,dataType,netName,isPlug,isSocket):
+        global nodzd
+        if not(nodeName in nodzd):
+            nodzd[nodeName]={}
+    
+        nodzd[nodeName][pinName]={}
+    
+        nodzd[nodeName][pinName].update({"datatype":dataType})
+        nodzd[nodeName][pinName].update({"netname":netName})
+        nodzd[nodeName][pinName].update({"isPlug":isPlug})
+        nodzd[nodeName][pinName].update({"isSocket":isSocket})
+
+    def showall():
+        # not used, just for debug, so prints wont happen unless code instructed to use this func
+        # it walks thru dict 'nodzd' and prints everything ( does not write )
+        global nodzd
+        for nodeName in nodzd.keys():
+            print(nodeName)
+            for pinName in nodzd[nodeName].keys():
+                strg1="\t"
+                strg2=pinName
+                strg3=strg1+strg2
+                print(strg3)
+                for attrName in nodzd[nodeName][pinName].keys():
+                    strg1="\t\t"
+                    strg2=attrName
+                    attrValue=nodzd[nodeName][pinName][attrName]
+        
+                    # just for printing & concatenation
+                    if attrValue == None:
+                        attrValue="None"
+                    if attrValue == True:
+                        attrValue="true"
+                    if attrValue == False:
+                        attrValue="false"
+            
+                    strg3=" is "
+                    strg4=attrValue
+                    strg5=strg1+strg2+strg3+strg4
+                    print(strg5)
+
+            print("")
+
+    def printNodeName(self,nodeName):
+        strg1="\t\t\""
+        strg2=nodeName
+        strg3="\": {\n"
+        strg4=strg1+strg2+strg3
+        nodzFile.write( strg4)
+
+    def printAlternate(self,alternate):
+        strg1="\t\t\t\"alternate\": \""
+        strg2=alternate
+        strg3="\",\n"
+        strg4=strg1+strg2+strg3
+        nodzFile.write( strg4)
+
+    def printAttrHdr(self):
+        strg1="\t\t\t\"attributes\": [\n"
+        nodzFile.write( strg1)
+
+
+
+    #funcs for parsing input and formatting json output
+    #def	readParseHalSig(self):
+    #    #10jan2022 stub for half of test8.py
+    #    return 0
+    
+    #def formatHalInfoToJson(self):
+    #    #10jan2022 stub for back half of test8.py
+    #    return 0
+
+    #funcs for hypermedia  ( fname stored in 'alternate'  viewer hint stored in 'datatype')
+    # doSch depricated, use doSVG , smaller faster and independant of ecad on user system
     def doSch(self,proFile):
         strg1="kicad "
         strg2=proFile
@@ -150,48 +367,32 @@ class Nodz(QtWidgets.QGraphicsView):
         #subprocess.run(strg3)
 
     def doTxt(self,txtFile):
-	#19dec using just "nano fname" 
-	#  would run nano in termnl that ran python nodz_demo.py
-	#  and that was a mess when nano exited
-	# so try openng a new terminal to run nanao from
-	strg1="xfce4-terminal -H --command \"nano "
+        #19dec using just "nano fname" 
+        #  would run nano in termnl that ran python nodz_demo.py
+        #  and that was a mess when nano exited
+        # so try openng a new terminal to run nanao from
+        strg1="xfce4-terminal -H --command \"nano "
         strg2=txtFile
-	strg3="\""
+        strg3="\""
         strg4=strg1+strg2+strg3
         os.system(strg4)
-	
-    #19dec  this vvv removes need for local ecad pgm
-    # just make an svg of the schematic and mark attr <dataType = "svg">
+    
     def doSVG(self,svgFile):
-	self.svgWidget = QtSvg.QSvgWidget(svgFile)
-	self.svgWidget.show()
-	    
+	#19dec  this vvv removes need for local ecad pgm
+	# just make an svg of the schematic and mark attr <dataType = "svg">
+        self.svgWidget = QtSvg.QSvgWidget(svgFile)
+        self.svgWidget.show()
+        
     def doMan(self,manItem):
-	strg1="xfce4-terminal -H --command \"man "
+        strg1="xfce4-terminal -H --command \"man "
         strg2=manItem
-	strg3="\""
+        strg3="\""
         strg4=strg1+strg2+strg3
         os.system(strg4)
-	"""
-	
-	#08jan2022 stuid test to see what these values are
-	strg1="QtCore.Qt.ControlModifier is  "
-        strg2=(str(QtCore.Qt.ControlModifier))
-	strg3=strg1+strg2
-	print(strg3)
-	strg1="QtCore.Qt.ShiftModifier is  "
-        strg2=(str(QtCore.Qt.ShiftModifier))
-	strg3=strg1+strg2
-	print(strg3)
-	strg1="QtCore.Qt.MetaModifier is  "
-        strg2=(str(QtCore.Qt.MetaModifier))
-	strg3=strg1+strg2
-	print(strg3)
-        """
-	
+    
     def doUrl(self,url):
-	strg1="firefox-esr "
-	#19dec spcl invocation of chromium to stop it bitching about keyring
+        strg1="firefox-esr "
+        #19dec spcl invocation of chromium to stop it bitching about keyring
         #strg1="chromium --password-store=basic "
         strg2=url
         strg3=strg1+strg2
@@ -205,125 +406,92 @@ class Nodz(QtWidgets.QGraphicsView):
         self.w.show()
 
     def doEditSaveMe(self,txtFile):
-	#09jan2022   works and single wndo to close :-)
-	strg1="scite "
+	#14jan2022 this is very handy
+	# select a node, press F, the screen is full with just the 1 node
+	# then ctrl dbl clk the node( not a slot )
+	# the a texteditlr opens with entire json file
+	# scroll to the node stanza and edit anything
+	# esp cnxnSide ( to prevent wires hidden under nod (
+	# esp slot order ( to untwist nets cnxd to node )
+	
+        #09jan2022   works and single wndo to close :-)
+        strg1="scite "
         strg2=txtFile
         strg3=strg1+strg2
         os.system(strg3)
-
+	
+    #funcs for qt events------------------------------------
+    # STUDY how event is related to signal and were/ig .connect ed to slot
     def mousePressEvent(self, event):
+        #class Nodz func mousePressEvenet
         """
          Initialize tablet zoom, drag canvas and the selection.
         """
-	#class Nodz func mousePressEvenet
-        #ok rmvd 15dec try add popup dlg m 1st get bg sensitive to clk
         
-	#08jan2022 this vv prints the object clkd on
-        print(self.scene().itemAt(self.mapToScene(event.pos()),QtGui.QTransform()))
-	#08jan these vvv turn itemAt into english
-	clkontype = (type(self.scene().itemAt(self.mapToScene(event.pos()),QtGui.QTransform())))
-	#print("clkontype = >>",clkontype,"<<")
-	if clkontype == NodeItem:
-	    print("Node clkd")
-	if clkontype == PlugItem:
-	    print("PlugItem")
-	if clkontype == SocketItem:
-	    print("SocketItem")
-	if clkontype == ConnectionItem:
-	    print("ConnectionItem")
-	
+        #08jan2022 this vv prints the object clkd on
+	#14jan this vvv is a way to find the thing under the clk posn
+        #print(self.scene().itemAt(self.mapToScene(event.pos()),QtGui.QTransform()))
+        
+	#08jan   beg my code---------------------
+        #08jan these vvv turn itemAt into english
+        clkontype = (type(self.scene().itemAt(self.mapToScene(event.pos()),QtGui.QTransform())))
+    
+        #14jan get some info about thing clkd on
+        if clkontype == NodeItem:
+            print("Node clkd")
+        if clkontype == PlugItem:
+            print("PlugItem")
+        if clkontype == SocketItem:
+            print("SocketItem")
+	#14jan for CnxnItem, additionally display the key modifier(s)
+        if clkontype == ConnectionItem:
+            if (event.modifiers() == QtCore.Qt.ControlModifier):    
+                print("class Nodz func mousePress ANY BTN CTRL  ConnectionItem")
 
-
-	#08jan try to notice clk and modifier
-        if (event.button() == QtCore.Qt.RightButton and
-            event.modifiers() == QtCore.Qt.NoModifier):
-	    print("l btn press and NO mod")
-	
-	
-        # 09nov  AltRtBtn  this is stolen by XFCE4 and it resizes the window vertically
-        # DONT USE ALT RT BTN!
-        if (event.button() == QtCore.Qt.RightButton and
-            event.modifiers() == QtCore.Qt.AltModifier):
-            self.currentState = 'ZOOM_VIEW'
-            self.initMousePos = event.pos()
-            self.zoomInitialPos = event.pos()
-            self.initMouse = QtGui.QCursor.pos()
-            self.setInteractive(False)
-
+                #14jan2022 remove the cnxn if ctrl clkd
+		#  bad idea ... it avoids the normal way to handle event
+		#  it works but other things are happening that are ignored
+		# not understood well
+                #thing=self.scene().itemAt(self.mapToScene(event.pos()),QtGui.QTransform())
+                #thing._remove()
+	#08jan   end my code---------------------
+        
         # Drag view
-        # 09nov alt midBtn  is stolen by xfce4 gui  , it hides wndo and expose below
-        # so JUST DONT USE ALT RT BTN
-	#08jan2022
-	# note  this elif id empty, is also empty on04jan vrsn, and drag cnxn works there
-        elif (event.button() == QtCore.Qt.MiddleButton and
-              event.modifiers() == QtCore.Qt.AltModifier):
-        
-            """
-            dangerous  inhibit it  ok now just shows other window beneath
-                self.currentState = 'DRAG_VIEW'
-                self.prevPos = event.pos()
-                self.setCursor(QtCore.Qt.ClosedHandCursor)
-                self.setInteractive(False)
-            """
+        # DONT USE ALT  xfce4 doesnt play well w qt
+	# 14jan remmed out
+        #if (event.button() == QtCore.Qt.RightButton and
+        #    event.modifiers() == QtCore.Qt.AltModifier):
+        #    #12jan i dont use any alt key combos becuz xfce4 eats them afaict
+        #    # so i nueter this code becuz i need the elseifs below
+        #    jnk=42
+        #    
+        # 14jan remmed out
+        # note  this elif was empty, is also empty on04jan vrsn, and drag cnxn works there
+        #elif (event.button() == QtCore.Qt.MiddleButton and
+        #      event.modifiers() == QtCore.Qt.AltModifier):
+        #    #12jan2022 there was no action in this elif
+        #    # everything wwas commented out, added jnk=42
+        #    jnk = 42
 
-        # Rubber band  BEGIN
-        # aka lasoo  , have to start in empty space, 
-        #  but does not need to end in empty space, does not  need to lasoo anything
-        #elif (event.button() == QtCore.Qt.LeftButton and
-        #      event.modifiers() == QtCore.Qt.NoModifier and
-        #      self.scene().itemAt(self.mapToScene(event.pos()), QtGui.QTransform()) is None):
-	
-	#05jan chgs to ctrl shidt left press
-	# now can lassoo group
-	# and ingle clk in space deselects all
-        #elif (event.button() == QtCore.Qt.LeftButton and
-        #      event.modifiers() == QtCore.Qt.ControlModifier and
-	#      event.modifiers() == QtCore.Qt.ShiftModifier and
-        #      self.scene().itemAt(self.mapToScene(event.pos()), QtGui.QTransform()) is None):
-
-        #05jan chg to just shift left press ANYWHEE in space
-	# got select ALL
-	# and ingle clk in space deselects all
-        #elif (event.button() == QtCore.Qt.LeftButton and
-	#      event.modifiers() == QtCore.Qt.ShiftModifier and
-        #      self.scene().itemAt(self.mapToScene(event.pos()), QtGui.QTransform()) is None):
-		      
-        #05jan chg to just ctrl left press ANYWHEE in space
-	# got ctrl left press in space selects ALL
-	# and left press anywhere in space DEselects All
-	#
-	# and control shift left press rubberband selects group
-	#
-	# and further shift left press adds indiv nodes
-	
-        #08jan2022 here vv i chgd fron NoModifier to ControlModifier
-	# and i lost ability to drag a net frpm a plu
-	#elif (event.button() == QtCore.Qt.LeftButton and
-	#      event.modifiers() == QtCore.Qt.ControlModifier and
-        #      self.scene().itemAt(self.mapToScene(event.pos()), QtGui.QTransform()) is None):
-	
-	# 08jan this vvv is for select ALL
-	# click in space with correct modifier
-	# 08jan 2022 i can make it works with Shift Control and Meta
-	#  leaving it with Control for now
-
-        #08jan2022 got shift control meta working in all combos
-	#       and self.scene().itemAt(self.mapToScene(event.pos()), QtGui.QTransform()) is None):
-	# the last constraint means 'clicked in space'
-	# so we enter selection mode IF we ctrl chift meta clk in space
-	#  further code will ignore the posn where clk occured
-	#  and will effectively lasoo everything
-        elif ((event.button() == QtCore.Qt.LeftButton ) and 
-	      (event.modifiers() & QtCore.Qt.ShiftModifier ) and
-	      (event.modifiers() & QtCore.Qt.MetaModifier ) and
-	      (event.modifiers() & QtCore.Qt.ControlModifier ) and
-	      (self.scene().itemAt(self.mapToScene(event.pos()),QtGui.QTransform()) is None)):
-	    print("l btn and SHIFTCONTROLMETA---------------****")
-	    #print(self.scene().itemAt(self.mapToScene(event.pos()),QtGui.QTransform()))
+        #14jan new top of pinball if/elif..
+	#14jan my own select all code ^shitMetLeftPress
+        #elif ((event.button() == QtCore.Qt.LeftButton ) and 
+	if ((event.button() == QtCore.Qt.LeftButton ) and 
+              (event.modifiers() & QtCore.Qt.ShiftModifier ) and
+              (event.modifiers() & QtCore.Qt.MetaModifier ) and
+              (event.modifiers() & QtCore.Qt.ControlModifier ) and
+              (self.scene().itemAt(self.mapToScene(event.pos()),QtGui.QTransform()) is None)):
+            #14jan MY select all  ^shiftMetaLpress
+	    #  long ago i made ^shiftMetaLeftPress a 'select all'	    
+	    # a lasoo rqrs two points to define the rect to be selected
+	    # i ignore the clk posn and use 0,0 for topleftcorner
+	    # and a qt5 func to get me botright corner of everything
+	    # so the rect will enclose all 
+	    # I  BEGIN the state of SELECTION here, only here
+            #print("l btn and SHIFTCONTROLMETA---------------****")
             self.currentState = 'SELECTION'
             self._initRubberband(event.pos())
             self.setInteractive(False)
-
 
         # Drag Item
         # yes this works   Lbtn ON NODE w/o(alt, or shift , or ctrl)
@@ -333,220 +501,120 @@ class Nodz(QtWidgets.QGraphicsView):
             self.currentState = 'DRAG_ITEM'
             self.setInteractive(True)
 
+            ##12jan2022
+            #thing = self.scene().itemAt(self.mapToScene(event.pos()), QtGui.QTransform())
+            #print("thing is ",type(thing))
+            #if(type(thing) == ConnectionItem ):
+            #    #print("l btn no modifier  on CNXN, state = DEFAULT")
+            #    self.currentState = 'DEFAULT'
+            ## 12jan BUT CNXN is deleted in mouseRelease
+            #else:
+            #    #12jan2022 
+            #    #print("l btn no modifier  state became DragItem")
+            #    self.currentState = 'DRAG_ITEM'
+            #    self.setInteractive(True)
 
-        # Add selection
-	#04jan2022 2146
-	# this is CTL SHIFT LBTN PRESS ( other code handle release)
-	#  it sets up a STATE  'ADD_SELECTION'
-	# MAYBE i can add a new keybtncombo for AddAll
+
         elif (event.button() == QtCore.Qt.LeftButton and
               QtCore.Qt.Key_Shift in self.pressedKeys and
               QtCore.Qt.Key_Control in self.pressedKeys):
+            # Add selection
+            #04jan2022 2146
+            # this is CTL SHIFT LBTN PRESS ( other code handle release)
+            #  it sets up a STATE  'ADD_SELECTION'        
+	    # THIS is start of ghost rect enveloping nodes.. before Focus is used
             self.currentState = 'ADD_SELECTION'
             self._initRubberband(event.pos())
             self.setInteractive(False)
 
-
         # Subtract selection
-        # 20nov this means Ctl Lbtn   but i see no subtract action
         elif (event.button() == QtCore.Qt.LeftButton and
               event.modifiers() == QtCore.Qt.ControlModifier):
-            self.currentState = 'SUBTRACT_SELECTION'
+            self.currentState = 'DEFAULT'
             self._initRubberband(event.pos())
             self.setInteractive(False)
 
 
         # Toggle selection
-        #20nov  this works,  ON ONE NODE shiftmodifier is just damn shift
-        # and shift Lbtn toggles the hilite of a node when ptr on node
-	#04jan can i hack this with a modifier to do select/deselect ALL?
         elif (event.button() == QtCore.Qt.LeftButton and
               event.modifiers() == QtCore.Qt.ShiftModifier):
             self.currentState = 'TOGGLE_SELECTION'
-	    
-	    #04jan2022 
-	    # the event here is  Shift LeftBtn
-	    #
-	    #  ng   tried w/o vvv and include  the trple quoted below
             self._initRubberband(event.pos())
-	    # 04jan i get a rubberbox from 0 0 to the mouse
-	    #   not enveloping all widgets
-	    #  well IF the mouse if to right and nelow all THEN all nodes selected
-	    #
-	    
-	    """
-	    p=QPoint()
-            p.setX(0)
-            p.setY(0)
-	    self._initRubberband(p)
-	    """
-	    
             self.setInteractive(False)
-	    """
-            # if after this ^^^ i shift then left btn clck below and right of all
-	    # then everything is selected
-	    # i think i can make a select All this way
-	    # if i use 0,0 ( seems to be top left of canvas)
-	    # AND if i knew the bounding box or width.height of canvas
-	    # AHAH in the config file is
-	    #     "scene_width": 2000,
-            #     "scene_height": 2000,
-	    # 0,0,2000,2000 should work... NO NOT ENUF -10000 -10000 10000 10000
-	    # work where?  i think the start corner is done her4e but the end corner is done in release code
-	    """
+            
         else:
             self.currentState = 'DEFAULT'
 
         super(Nodz, self).mousePressEvent(event)
 
+    #end -----class Nodz func mousePressEvenet
+
     def mouseMoveEvent(self, event):
         """
          Update tablet zoom, canvas dragging and selection.
         """
-	#09jan2022 wth does zoom do in mouseMove???
-        # Zoom.
-        if self.currentState == 'ZOOM_VIEW':
-            offset = self.zoomInitialPos.x() - event.pos().x()
 
-            if offset > self.previousMouseOffset:
-                self.previousMouseOffset = offset
-                self.zoomDirection = -1
-	        #09jan2022 i dont see zoomIncr used		
-                #self.zoomIncr -= 1
-
-            elif offset == self.previousMouseOffset:
-                self.previousMouseOffset = offset
-                if self.zoomDirection == -1:
-                    self.zoomDirection = -1
-                else:
-                    self.zoomDirection = 1
-
-            else:
-                self.previousMouseOffset = offset
-                self.zoomDirection = 1
-	        
-	    #09jan2022 the zoom is not as expected
-	    # inside Qt  there are numbers
-	    # outside in pyqt5 there is the idea of scale
-	    # the outsideScale can affect the inside mumbers
-	    # bit notas expected
-	    # id inside number begins as 15
-	    # and outside scale is set to 1
-	    # then inside is 16   ok
-	    # but if outside scale is set to 2/3
-	    # then inside number is 10   ok
-	    # now, if outside scale is left at 2/3 and the scale func is called again
-	    # then inside number becomes 0.6666...
-	    # and if scale called again, inside# is 0.444444 etc
-	    # so the outside scale didnt change
-	    # it was just called again
-	    # SO what is the inside number 15 when 1st loaded?
-
-            #09jan2022 i found to restore the scale to orig on S.O.
-	    #  To reset the index you must reset the transformation:
-            #  {your_graphicsview}.setTransform(QtGui.QTransform())
-            #
-	    # maybe a key R restore size?
-	    # am i getting close to needing menus?
-
-
-            # Perform zoom and re-center on initial click position.
-            #27nov TODO does this work? "zoom on initl clk posn? ...   re-center on initl clkposn?
-            #27nov i think zoom is pretty sucky, needs a "zoom all", "zoom selected"
-            pBefore = self.mapToScene(self.initMousePos)
-            self.setTransformationAnchor(QtWidgets.QGraphicsView.AnchorViewCenter)
-
-	    #09jan2022 i dont see why scene scale is affected by mouseMove
-            #  	    so i rem it
-            #self.scale(zoomScale, zoomScale)
-	    
-	    # what is self here?  class Nodz(QtWidgets.QGraphicsView):
-	    #  PySide2.QtWidgets.QGraphicsView.scale(sx, sy)
-	    
-            pAfter = self.mapToScene(self.initMousePos)
-            diff = pAfter - pBefore
-
-            self.setTransformationAnchor(QtWidgets.QGraphicsView.NoAnchor)
-            self.translate(diff.x(), diff.y())
-
-        # Drag canvas.
-        elif self.currentState == 'DRAG_VIEW':
-            offset = self.prevPos - event.pos()
-            self.prevPos = event.pos()
-            self.verticalScrollBar().setValue(self.verticalScrollBar().value() + offset.y())
-            self.horizontalScrollBar().setValue(self.horizontalScrollBar().value() + offset.x())
-
-        # RuberBand selection.
-        elif (self.currentState == 'SELECTION' or
+        #14jan there is no ZOOM VIEW state (alt and whell nfg in xfce4)
+	# so rem out
+	# and DRAG VIEW only set with alt midl press and that cant happen in xfce4
+	# so rem that out
+	# which leaves the single last stanza 'RubberBand Selectiom
+        #14jan i can lassoo the nodes i want ok
+        if (self.currentState == 'SELECTION' or
               self.currentState == 'ADD_SELECTION' or
               self.currentState == 'SUBTRACT_SELECTION' or
               self.currentState == 'TOGGLE_SELECTION'):
+            # RubberBand selection
             self.rubberband.setGeometry(QtCore.QRect(self.origin, event.pos()).normalized())
 
         super(Nodz, self).mouseMoveEvent(event)
 
     def mouseReleaseEvent(self, event):
+        #class Nodz func mouseReleaseEvent
         """
          Apply tablet zoom, dragging and selection.
         """
-        # Zoom the View.
-        if self.currentState == '.ZOOM_VIEW':
-            # 20nov  zoom has nothing to do with mouseRelease, test by rem-ing this code
-            #27nov  recheck, i dunno what ^^^ means
-	    #09jan2022 this code has been neutered for a loooong time
-	    # dunno what it will do if uncommented
-	    # 09jan2022 TODO test what happens when uncommented
-            """
-            self.offset = 0
-            self.zoomDirection = 0
-            #09jan2022 i dont see zoomIncr used		
-            #self.zoomIncr = 0
-            self.setInteractive(True)
-            """
-        # Drag View.
-        elif self.currentState == 'DRAG_VIEW':
-            """
-            #20nov there is no drag view that i can see using mouse
-            self.setCursor(QtCore.Qt.ArrowCursor)
-            self.setInteractive(True)
-            """
-        # Selection.
-	# if state - SELECTION then mouseReleas will choose ALL
-	#05jan2022 why was i in SELECTION state
-        elif self.currentState == 'SELECTION':
-	    
-            #20nov i can lassoo and can move the group that was lassooed
-	    #09jan 2022  TODO can i zoom the slected? YES
-            #        can I save the selected? NO
-	    #        can I turn slected into a macro-widget? DO SAVE SEL 1st
+        #14jan state Zoom View only set with wheel event or an Alt Press
+        # i use neither becuz: both wheel event and alt modifier bad in xfce4
+	# so remove that stanza off the pinball top
+	
+	#14jan DRAG VIEW only set by alt midl press so not used
+	# remove that stanza off top of pinball
+	
+	#22jan2022 dbug
+	print("in mouseRelease state is ",self.currentState)
+	if self.currentState == 'SELECTION':
+            # if state == SELECTION then mouseReleas will choose ALL
+            #05jan2022 why was i in SELECTION state? 
+	    #  in class Nodz mousePress, in ^shiftMteLeft press, i set state = SELECTION
             self.rubberband.setGeometry(QtCore.QRect(self.origin, event.pos()).normalized())
             painterPath = self._releaseRubberband()
-	    	    
+                
             self.setInteractive(True)
-	    
-	    # 09jan2022 found   itemsArea = self.scene().itemsBoundingRect()
-	    # cool it works, i didnt like my hard numbered kludge
-	    ppath = QPainterPath()
-            #ppath.addRect(-10000, -10000, 20000, 20000)
-	    ppath.addRect(self.scene().itemsBoundingRect())
+        
+            # 09jan2022 found   itemsArea = self.scene().itemsBoundingRect()
+            # cool it works, i didnt like my hard numbered kludge
+            ppath = QPainterPath()
+            ppath.addRect(self.scene().itemsBoundingRect())
+	    #22jan2022 this vvv does NOT print when i drag a ghost rect over alll nodes
+	    #22jan i thought i'd be in this part of if/elif but NO, in next!
+	    #  actually in ADD_SELECTION
+	    print("in mouseRelease itemsBoundingRect ",self.scene().itemsBoundingRect().x(),self.scene().itemsBoundingRect().y(),self.scene().itemsBoundingRect().width(),self.scene().itemsBoundingRect().height())
             self.scene().setSelectionArea(ppath)
 
-        # Add Selection.
-        # 27nov  what does add selection mean?? duplicate/copy? 
         elif self.currentState == 'ADD_SELECTION':
+	    #22jan2022 this is where i am when i drag a ghost rect over any
+	    # this code iterates over all nodes
+            # 27nov  add selection means add to selected list
             self.rubberband.setGeometry(QtCore.QRect(self.origin,
                                                      event.pos()).normalized())
-            #20nov this reads like lassoo, all items lassooed get hilihghted
-            # but the print doesnt occure   so   its not a lasoo here	    #print("add selection  lassoo-ed")
             painterPath = self._releaseRubberband()
             self.setInteractive(True)
             for item in self.scene().items(painterPath):
                 item.setSelected(True)
 
-        # Subtract Selection.
-        # 27nov what does subtract mean? delete?
-	# 08 jan  i think it means de-selected
         elif self.currentState == 'SUBTRACT_SELECTION':
+            # 27nov what does subtract mean? delete? i think de-selected
             self.rubberband.setGeometry(QtCore.QRect(self.origin,
                                                      event.pos()).normalized())
             painterPath = self._releaseRubberband()
@@ -554,12 +622,9 @@ class Nodz(QtWidgets.QGraphicsView):
             for item in self.scene().items(painterPath):
                 item.setSelected(False)
 
-        # Toggle Selection
-        # 27nov what does toggle mean? visibility?
-	#08jan i think it means toggle selected-ness of item(s)
         elif self.currentState == 'TOGGLE_SELECTION':
-            self.rubberband.setGeometry(QtCore.QRect(self.origin,
-                                                     event.pos()).normalized())
+            # 27nov what does toggle mean? i think toggle selected-ness
+            self.rubberband.setGeometry(QtCore.QRect(self.origin, event.pos()).normalized())
             painterPath = self._releaseRubberband()
             self.setInteractive(True)
             for item in self.scene().items(painterPath):
@@ -585,14 +650,18 @@ class Nodz(QtWidgets.QGraphicsView):
          S save scene
          R estore scene to full scale ( usually way too big for screen, worls but most outside of viewport
         """
+        #22jan2022
+	global nodzd
+	global sigF
+	global nodzFile
 	
         #05dec use global  keyword with filePath
-	#09jan2022 rename global filePath to workingFile
-	global workingFile
-	        
-	#09jan2022  whats this vvv mean??
-	#  is it concatenating a command?
-	# useful?  not afaict   the list is just tossed later
+        #09jan2022 rename global filePath to workingFile
+        global workingFile
+            
+        #09jan2022  whats this vvv mean??
+        #  is it concatenating a command?
+        # useful?  not afaict   the list is just tossed later
         if event.key() not in self.pressedKeys:
             self.pressedKeys.append(event.key())
 
@@ -602,67 +671,325 @@ class Nodz(QtWidgets.QGraphicsView):
 
         #09jan2022 ZOOM IN works  either keypad or shift'='
         if event.key() == QtCore.Qt.Key_Plus:
-	    #09jan2022 no more global inFactor, use constant, only 1 place
-	    self.scale(1.03,1.03)
+            #09jan2022 no more global inFactor, use constant, only 1 place
+            self.scale(1.03,1.03)
             self.currentState = 'DEFAULT'
 
         #09jan2022 ZOOM OUT works  either keypad or '-'
         if event.key() == QtCore.Qt.Key_Minus:
-	    #09jan2022 no more global outFactor   use a constant , only 1 place
-	    self.scale(0.970873786408,0.970873786408)
+            #09jan2022 no more global outFactor   use a constant , only 1 place
+            self.scale(0.970873786408,0.970873786408)
             self.currentState = 'DEFAULT'
 
+	#22jan2022 R is very bad
         #09jan2022
-	# R  RESIZE  restore full size   not very useful
-	# I DID find i can restore the original scale ( or unscaled scene )
-	#  on Stack Overflow
+        # R  RESIZE  restore full size   not very useful
+        # I DID find i can restore the original scale ( or unscaled scene )
+        #  on Stack Overflow
         # To reset the index you must reset the transformation:
         #  {your_graphicsview}.setTransform(QtGui.QTransform())
         # so self.setTransform(QtGui.QTransform())  should work
-	# try it in key 'R'  for resize
+        # try it in key 'R'  for resize
         # WORKS  but not very useful, becuz that size doesnt fit on screem (usually, or you have a 2node graph ;-/
         if event.key() == QtCore.Qt.Key_R:
             self.setTransform(QtGui.QTransform())
-		
-	################# SAVE FILE #################
 
-	#09jan2022 if i want to save ctr and scale
-	# short story:   not what i imagined
-	#
-	# they must be known
-	# what are the vars to use now?
-	# well for scale there is no var
-	#  the view size is chgd by using object.scale(xscale,yscale)
-	#  so I know the scaling factor but I might have applied it N times already
-	#  so I could track the scaling factor, timesUP and timesDown
-	#  but i dont so far
+
+        #10jan2022 open halsignal file
+        ############  CONVERT  open hal signal file  key C    ###################
+        if event.key() == QtCore.Qt.Key_C:
+            if event.modifiers() == QtCore.Qt.NoModifier:
+
+                #,,,,,,,,,,,open input file, read to list, close file
+                #sigF = open('/home/tomp/Nodz/parseHal/file-IN/haledm11jan2022.signals', 'r')
+                sigFname = self.getFileNameForOpen()
+
+		sigF = open(sigFname, 'r')
+                Lines = sigF.readlines()
+                for ndx in range(0,len(Lines)-1):
+                    Lines[ndx]=Lines[ndx].strip()
+                sigF.close()
+                #,,,,,,,,,,,close input file ,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+
+
+                #process lines read frpm halcmd show sig
+
+                #nodzd={}
+                ndx=2
+                while ndx < (len(Lines)-1):
+                    thisLine=Lines[ndx]
+                    if self.chkFirstLine(thisLine) == isFirstLine:
+                        dataType,netName=self.extractDatatypeNetname(Lines[ndx])
+                        ndx += 1
+                    else:
+                        while True:
+                            thisLine = Lines[ndx]
+                            isPlug=False
+                            isSocket=False
+                            if not (self.chkFirstLine(thisLine) == isFirstLine):
+                                lineType = self.chkPinDir(thisLine)
+                                if not(lineType == notPinLine):
+                                    if lineType == isPlugLine:
+                                        isPlug=True
+                                    elif lineType == isSocketLine:
+                                        isSocket=True
+                                    lparts=thisLine.split(" ")
+                                    lpartsLen = len(lparts)
+                                    nodeName,pinName = self.getNodePinName(lparts[lpartsLen-1])
+                                    self.storePinfo(nodeName,pinName,dataType,netName,isPlug,isSocket)
+                                    ndx += 1
+                                    break
+                            break
+                        else:
+                            break
+                #22jan2022 sndt{} a dict   sn  signalname (key)  dt  datatype (value)
+                sndt={}
+                for nodname in nodzd:
+                    for pnam in nodzd[nodname]:
+                        sn = nodzd[nodname][pnam]['netname']
+                        dt = nodzd[nodname][pnam]['datatype']
+                        sndt.update({sn:dt})
+                #------------end main code parse input file to dict ---------------------------------------
+
+                #-----------------begin collecting all cnxn pairs----------
+                cnxns=[]
+                for nodeName in nodzd.keys():
+                    for pinName in nodzd[nodeName].keys():
+                        pinfo=[]
+                        pinfo.append(nodzd[nodeName][pinName]['netname'])
+                        fqpn=nodeName+"."+pinName
+                        pinfo.append(fqpn)
+                        pinfo.append(nodzd[nodeName][pinName]['isPlug'])
+                        pinfo.append(nodzd[nodeName][pinName]['isSocket'])
+                        cnxns.append(pinfo)
+                cnxns.sort()
+                cnxnsets=[]
+                ndx = 0
+                while ndx < (len(cnxns)-1):
+                    netset=[]
+                    nn=cnxns[ndx][0]
+                    netset.append(cnxns[ndx])
+                    ndx += 1
+                    limit=len(cnxns)-1
+                    while(cnxns[ndx][0]== nn):
+                        netset.append(cnxns[ndx])
+                        ndx+=1
+                        if(ndx > limit):
+                            break
+    
+                    cnxnsets.append(netset)
+                #-----------------end collecting all cnxn pairs----------
+
+                suggestedFirstName = sigFname.rsplit('.',1)[0]
+                suggestedFname = suggestedFirstName + ".json"
+                nodzFname = self.getFileNameForSave(suggestedFname)
+                nodzFile = open(nodzFname,"w")
+
+                #22jan begin writing CONNECTIONS stanza----------------
+                nodzFile.write("{\n")
+                nodzFile.write("\t\"CONNECTIONS\": [\n")
+                netSetsPrinted =0
+                netSetLimit = len(cnxnsets)
+                onLastLoop = False
+                for netset in cnxnsets:
+                    signalName=netset[0][0]
+                    numlists=len(netset)
+                    defaultPlugName=signalName+"Source.out"
+                    plugName=""
+                    plcount=0
+                    hasPlug = False
+                    for line in netset:
+                        if line[2] == True:
+                            hasPlug = True
+                            plugName=line[1]
+                            break
+                        plcount += 1
+                    if not plugName:
+                        plugName = defaultPlugName
+                        nodeName=signalName+"Source"
+                        pinName="out"
+                        dataType = sndt[signalName]
+                        netName=signalName
+                        isPlug=True
+                        isSocket=False
+                        self.storePinfo(nodeName,pinName,dataType,netName,isPlug,isSocket)
+                    #################### END PlugName ########################
+
+                    #################### BEG SocketName(s) ########################
+                    hasSocket=[]
+                    for line in netset:
+                        hasSock=False
+                        if line[3] == True:
+                            hasSock = True
+                        hasSocket.append(hasSock)
+                    slcount=0
+                    for line in netset:
+                        if line[3] == True:
+                            hasSock=True
+                        else:
+                            hasSock=False
+                        slcount += 1
+                    numSocks=0
+                    for n in hasSocket:
+                        if n==True:
+                            numSocks+=1
+                    defaultSocketName=signalName+"Dest.in"
+                    socketName=""
+                    if numSocks == 0:
+                        socketName=defaultSocketName
+                        nodeName=signalName+"Dest"
+                        pinName="in"
+                        dataType = sndt[signalName]
+                        netName="-"
+                        isPlug=False
+                        isSocket=True
+                        self.storePinfo(nodeName,pinName,dataType,netName,isPlug,isSocket)
+                    #################### END SocketName(s) ########################
+        
+                    #  i am duplicating code maybe
+                    for pndx in range(0,len(netset)):
+                        isPlug = netset[pndx][2]
+                        if (isPlug):
+                            plugName=netset[pndx][1]
+                            break
+                    theseSockets = []
+                    for sndx in range(0,len(netset)):
+                        isSocket = netset[sndx][3]
+                        if (isSocket):
+                            theseSockets.append(netset[sndx][1])
+                    if len(theseSockets) == 0:
+                        theseSockets.append(defaultSocketName)
+                    for x in range(0,len(theseSockets)):
+                        strg1="\t\t[\n"
+                        nodzFile.write(strg1)
+                        strg1="\t\t\t\""
+                        strg2=plugName
+                        strg3="\",\n"
+                        strg4=strg1+strg2+strg3
+                        nodzFile.write(strg4)
+                        strg1="\t\t\t\""
+                        strg2=theseSockets[x]
+                        strg3="\"\n"
+                        strg4=strg1+strg2+strg3
+                        nodzFile.write(strg4)
+                        strg1="\t\t]"
+                        if onLastLoop:
+                            strg2="\n"
+                        else:
+                            strg2=",\n"
+                        strg3=strg1+strg2
+                        nodzFile.write(strg3)
+                    netSetsPrinted +=1
+                    if(netSetsPrinted==netSetLimit-1):
+                        onLastLoop=True
+                strg1=("\t],\n")
+                nodzFile.write(strg1)
+                ######## END printing output for CONNECTIONS stanza############
+
+                ############### begin printing NODES stanza #############
+                strg1="\t\"NODES\": {\n"
+                nodzFile.write( strg1)
+
+                numNodesPrinted=0
+                nodzdLen = len(nodzd)-1
+                lastNode=False
+
+                maxGridWideCount = 10
+                gridXstep = 400
+                gridYstep = 600
+                gridPixels = 600
+                # determine smallest gs (nodegridsize) that contains numNodes
+                for gridWideCount in range(1,(maxGridWideCount+1)):
+                    if (gridWideCount * gridWideCount ) >= nodzdLen + 1:
+                        break
+                gridW = gridWideCount
+                gridH = gridWideCount
+                gridSide = gridWideCount
+                #some loops and some counts are 0 based and other 1 based
+                # so i adjustthe num nodez (nodzdLen) for the current use case
+
+		# HERE HERE HERE
+		#22jan2022 oops forgot to write the Nodes section! already closed the file!
+
+                for nodeName, pinDictList in nodzd.items():
+                    self.printNodeName(nodeName)
+                    self.printAlternate("ShowMe")
+                    self.printAttrHdr()
+                    self.printOneAttrBlock(nodeName,"ShowMe",False)
+                    if numNodesPrinted == nodzdLen:
+                        lastNode = True
+                    numPinsPrinted=0	
+                    pinsLimit = len(nodzd[nodeName])-1
+                    lastPin = False
+                    for pinName in nodzd[nodeName]:
+                        if numPinsPrinted >= pinsLimit:
+                            lastPin = True
+                        self.printOneAttrBlock(nodeName,pinName,lastPin)
+                        if lastPin == True:
+                            if lastNode:
+                                strg1="\t\t\t],\n"
+                                nodzFile.write(strg1)
+                                self.nodeTail(lastNode,numNodesPrinted,gridSide, gridPixels)
+                                break
+                            else:
+                                strg1="\t\t\t],\n"
+                                nodzFile.write(strg1)
+                                self.nodeTail(lastNode,numNodesPrinted,gridSide,gridPixels)
+                        numPinsPrinted += 1
+                    numNodesPrinted += 1
+                strg1="\t}\n"
+                nodzFile.write( strg1)
+                strg1="}\n"
+                nodzFile.write( strg1)
+                nodzFile.close()
+                #-----------------end writing json file ----------
+
+        # load the new nodzJsonFile, and display it 
+        #loadGraph(nodzJsonFile)
+        ################# SAVE FILE #################
+
+        #09jan2022 if i want to save ctr and scale
+        # short story:   not what i imagined
+        #
+        # they must be known
+        # what are the vars to use now?
+        # well for scale there is no var
+        #  the view size is chgd by using object.scale(xscale,yscale)
+        #  so I know the scaling factor but I might have applied it N times already
+        #  so I could track the scaling factor, timesUP and timesDown
+        #  but i dont so far
 
         ################### SAVE #######################
         if event.key() == QtCore.Qt.Key_S:
             if event.modifiers() == QtCore.Qt.NoModifier:
-		workingFile = self.getFileNameForSave(workingFile)
-		#09jan2022 if fname from dlog has value, then save
-		if workingFile:
-		    self.saveGraph(workingFile)
-	    elif event.modifiers() == QtCore.Qt.ControlModifier:
-		######## SAVE AS FILE #########
-		filetoSaveAs = self.getFileNameForSave()
-		#09jan2022 if fname from dlog has value, then save
-		if filetoSaveAs:
-		    self.saveGraph(filetoSaveAs)
+                workingFile = self.getFileNameForSave(workingFile)
+                
+                #09jan2022 if fname from dlog has value, then save
+                if workingFile:
+                    self.saveGraph(workingFile)
+            elif event.modifiers() == QtCore.Qt.ControlModifier:
+                ######## SAVE AS FILE #########
+                filetoSaveAs = self.getFileNameForSave()
+            
+                #09jan2022 if fname from dlog has value, then save
+                if filetoSaveAs:
+                    self.saveGraph(filetoSaveAs)
 
         ################# LOAD ############################
         if event.key() == QtCore.Qt.Key_L:
-	    #09jan2022 use dialog to get file to load
-	    fileNameToOpen = self.getFileNameForOpen()
-	    if fileNameToOpen:
+            #09jan2022 use dialog to get file to load
+            fileNameToOpen = self.getFileNameForOpen()
+            if fileNameToOpen:
                 self.loadGraph(fileNameToOpen)
 
+                #15jan  lost assignment of workingFile   try here works so far
+		# to be tested   save  then  load again
+                workingFile = fileNameToOpen
         ################## FOCUS ###############################
         #27nov  ctrs the selection on screen
-	#09jan2022 hmmm if a single node is seleected, F will zoom it to full window
-	#09jan2022 WEEEEE if a groupl is slected, then F will zoom the group to full window
-	#09jan2 even a 'sparse' group can be zoomed with F
+        #09jan2022 hmmm if a single node is seleected, F will zoom it to full window
+        #09jan2022 WEEEEE if a groupl is slected, then F will zoom the group to full window
+        #09jan2 even a 'sparse' group can be zoomed with F
         if event.key() == QtCore.Qt.Key_F:
             self._focus()
 
@@ -683,8 +1010,8 @@ class Nodz(QtWidgets.QGraphicsView):
         """
 
         #09jan2022  keys that were pressed but not used 
-	#  are added to a list, and the list is trashed here
-	#  sounds stupid
+        #  are added to a list, and the list is trashed here
+        #  sounds stupid
         if event.key() in self.pressedKeys:
             self.pressedKeys.remove(event.key())
 
@@ -704,6 +1031,7 @@ class Nodz(QtWidgets.QGraphicsView):
         """
         painterPath = QtGui.QPainterPath()
         rect = self.mapToScene(self.rubberband.geometry())
+	print("_releaseRubberBand rect is ",rect.boundingRect())
         painterPath.addPolygon(rect)
         self.rubberband.hide()
         
@@ -713,15 +1041,30 @@ class Nodz(QtWidgets.QGraphicsView):
         """
          Center on selected nodes or all of them if no active selection.
         """
-	#09jan2022 the 'focus on all if none selected'   works  sortof  not ctrd horz by a  lot
-        #09jan2022 the focus on selected when some selected works ok
+        #09jan2022 the 'focus on all if none selected'   works  sortof  not ctrd horz by a  lot
+        #09jan2022 the focus on selected when some selected works sortof
+	#20jan the area of focus is not ctrd left to right ( up and down seems ok ... ask me when l-r is better)
+	
         if self.scene().selectedItems():
+	    #22jan2022  if any nodes selected
             itemsArea = self._getSelectionBoundingbox()
-            self.fitInView(itemsArea, QtCore.Qt.KeepAspectRatio)
+            #self.fitInView(itemsArea, QtCore.Qt.KeepAspectRatio)
+	    # QRectF(0, 0, 290, 200)
+	    # vvv ng  rect seen is nowhere near object lasoo'd
+	    #self.fitInView(QRectF(0, 0, 600, 400), QtCore.Qt.KeepAspectRatio)
+	    # vvv ng the gv2offset13 becomes very tall and skinny wide
+	    #self.fitInView(itemsArea, QtCore.Qt.IgnoreAspectRatio)
+	    # vvv ng not ctrd horz )
+	    #self.fitInView(itemsArea, QtCore.Qt.KeepAspectRatioByExpanding)
+	    # vvv orig 
+	    #HERE HERE HERE  20jan2022 2330
+	    print("in _focus  itemsArea manually selected is ",itemsArea)
+	    self.fitInView(itemsArea, QtCore.Qt.KeepAspectRatio)
         else:
-	    #10jan2022  if nothing is selected , then Focus on ALL
-	    bbox=self.sceneRect()
-	    self.fitInView(bbox, QtCore.Qt.KeepAspectRatio)
+	    #22jan2022  if NO nodes selected, then Focus on ALL
+            bbox=self.sceneRect()
+	    print("in _focus  automatically selected bbox is ", bbox)
+            self.fitInView(bbox, QtCore.Qt.KeepAspectRatio)
 
     def _getSelectionBoundingbox(self):
         """
@@ -862,6 +1205,8 @@ class Nodz(QtWidgets.QGraphicsView):
     #  and the viewer will open a filename in 'alternate'
     
     def createNode(self, name='default', preset='node_default', position=None, alternate=""):
+	#22jan2022 creatNode is called for every node stanza in json file
+	#  so the node DOES know its own x y posn
         """
          Create a new node with a given name, position and color.
 
@@ -896,13 +1241,14 @@ class Nodz(QtWidgets.QGraphicsView):
 
             if not position:
                 # Get the center of the view.
-		#05jan2022 i think this vvv is where the 1st node in grid was put at scene center
-		# so the test 'if not position' fails when position is 0,0
-		# i _think_
+                #05jan2022 i think this vvv is where the 1st node in grid was put at scene center
+                # so the test 'if not position' fails when position is 0,0
+                # i _think_ ( i think thats why i use 1,1 someplace)
                 position = self.mapToScene(self.viewport().rect().center())
 
             # Set node position.
             self.scene().addItem(nodeItem)
+	    # 22jan2022 is this vvv making xcoord == -(nodewidth/2)?
             nodeItem.setPos(position - nodeItem.nodeCenter)
 
             # Emit signal.
@@ -1186,7 +1532,7 @@ class Nodz(QtWidgets.QGraphicsView):
 
         """
         
-	#09jan2022 use passed filewithpath instead ( allows save and saveas
+        #09jan2022 use passed filewithpath instead ( allows save and saveas
         ##05dec use global  keyword with filePath
         #global filePath
         
@@ -1203,12 +1549,88 @@ class Nodz(QtWidgets.QGraphicsView):
         #   eg  dict[nodename][attrname][propertyname]  <<< NOT how its done
         data = dict()
         #27dec data is a dict, has 2 entries 'NODES' and 'CONNECTIONS'
-	# the dict is private to this
+        # the dict is private to this
         
-	#02jan2022 1043 this vv missing   is in dec19 good code
-	data['NODES'] = dict()
-	
+        #02jan2022 1043 this vv missing   is in dec19 good code
+        data['NODES'] = dict()
+    
         nodes = self.scene().nodes.keys()
+
+        #22jan2022 ---------'normalize the coords' all in ++ quadrant IV-----------------
+	#22jan2022-1501  the 'save and reposition to left edge' works
+	#  but pretty much trashes any views saved.
+	#   the idea of saving the nodes inthe desired viewport
+	#    then slecting them is a fulll graph
+	#    then focus-ing on those 
+	#    seems a gooder idea noew
+        #22jan2022 keep graph in positive X space
+        # calc node x posn value , 
+	#  find node with least x, calc dist from 0 and find largest
+	#  min will be used to adjust posns, 
+	#  max will be used to adjust cfg file scene width
+	#  the adjust cab be added it to all x posns
+	nodesMinX=0.0
+	nodesMaxX=0.0
+	nodesMinY=0.0
+	nodesMaxY=0.0
+	nodeW=200.0
+	nodeRtOverhang=100.0
+	# detect 1st pass, where data read become compare val
+	ctr = 0.0
+        for node in nodes:
+	    nodeInst = self.scene().nodes[node] 
+	    #find min & max X
+	    #22jan2022 dang i had nix = nodeInst.pos().x
+	    #  instead of needed  nix = nodeInst.pos().x()
+	    #  the offset is ok now ( saved file wont have neg x posn for nodes
+	    #22jan2022 dont force compare to 0, compare to prev ( else just store this )
+	    nix = nodeInst.pos().x()
+	    if ctr == 0.0:
+		nodesMinX = nix
+	    if nix < nodesMinX:
+		nodesMinX = nix
+	    if nix > nodesMaxX:
+		nodesMaxX = nix
+	    #print("nix ", nix, " nodesMinX ",nodesMinX, " ctr ", ctr)
+	    #find min and max Y
+	    niy = nodeInst.pos().y()
+	    if ctr == 0.0 :
+		nodesMinY = niy
+	    if niy < nodesMinY:
+		nodesMinY = niy
+	    if niy > nodesMaxY:
+		nodesMaxY = niy
+            #print("niY ", niy, " nodesMiny ",nodesMinY, " ctr ", ctr)		
+	    ctr += 1.0
+	    
+	#print("nodesMinX = ",nodesMinX)
+	#22jan2022 adjust all x y
+        for node in nodes:
+	    nodeInst = self.scene().nodes[node] 
+	    # 22jan2022 confusing but seems like i should always subrtact the nodesminX from node x
+	    # 22jan  how to chg val? how is it addressed?
+	    #   nodeInst.x()  is a method to find the value
+	    #   it ^^^ is NOT a way to store the value
+	    # this >>> is a way to store new value self.scene().nodes[node].setPos(new_pos)
+	    #  just need to setup the QpointF way of describing a coord
+	    #22jan2022 1511  x coord looks ok
+	    #  but when y coord is 0, i see large empty area avove the nodes with 0 in y posn
+	    #  i can lassoo an empty ghost rect and see the y corrd is < -450
+	    #  now i see all 'adjusted graphs have large top y blank area 
+	    #   but nodes already at y0, the empty area is neg y!
+	    oldx=nodeInst.x()
+	    oldy=nodeInst.y()
+	    newx=oldx - nodesMinX + nodeW
+	    newy=oldy - nodesMinY
+            new_pos = QtCore.QPointF(newx, newy)
+	    self.scene().nodes[node].setPos(new_pos)
+	    
+	    
+        #22jan2022 adjust the maxX maxY
+	#nodesMaxX -= nodesMinX
+	#nodesMaxY -= nodesMinY
+        #22jan2022--------whew thats a lotta code chgs---------	
+
 	
         for node in nodes:
             
@@ -1235,9 +1657,9 @@ class Nodz(QtWidgets.QGraphicsView):
         # Save data.
         
         try:
-	    #09jan2022 chg to use passed fqfn instead of global filePath
+            #09jan2022 chg to use passed fqfn instead of global filePath
             #utils._saveData(filePath, data=data)
-	    utils._saveData(fqfn, data=data)
+            utils._saveData(fqfn, data=data)
         except:
             print('Invalid path : {0}'.format(fqfn))
             print('Save aborted !')
@@ -1262,33 +1684,33 @@ class Nodz(QtWidgets.QGraphicsView):
          :type  filePath: str.
          :param filePath: The path where you want to load your graph from.
         """	
-	#09jan2022 dont use global, use passed fname
+        #09jan2022 dont use global, use passed fname
         ##05dec use global  keyword with filePath
         #global filePath
         
         # Load data.
         #if os.path.exists(filePath):
-	if os.path.exists(fqfn):
+        if os.path.exists(fqfn):
 
             #data = utils._loadData(filePath)
-	    data = utils._loadData(fqfn)
+            data = utils._loadData(fqfn)
         else:
             #print('Invalid path : {0}'.format(filePath))
-	    print('Invalid path : {0}'.format(fqfn))
+            print('Invalid path : {0}'.format(fqfn))
             print('Load aborted !')
             return False
 
-	#02jan2022
-	# the 'data' has 2 sections 'CONNECTIONS' and 'NODES'
-	# the CONNECTIONS is a list fo PAIRS or pins (fqpn)
-	# it has NO sense of dir, other than an assumption of order = 1)plug 1)skt
-	#
-	#print(str(data))
-	# any None pin will come from halcmd show sig>fname.signals
-	#   NOT from a SaveMe file that has none or has existing entries removed
-	# so the file suite here is nodz_demo/main/uti  is NOT hwre to look for None/none
-	# is 'workingFile' what i want?
-	
+        #02jan2022
+        # the 'data' has 2 sections 'CONNECTIONS' and 'NODES'
+        # the CONNECTIONS is a list fo PAIRS or pins (fqpn)
+        # it has NO sense of dir, other than an assumption of order = 1)plug 1)skt
+        #
+        #print(str(data))
+        # any None pin will come from halcmd show sig>fname.signals
+        #   NOT from a SaveMe file that has none or has existing entries removed
+        # so the file suite here is nodz_demo/main/uti  is NOT hwre to look for None/none
+        # is 'workingFile' what i want?
+    
         self.clearGraph()
         
         # Apply nodes data.
@@ -1296,12 +1718,15 @@ class Nodz(QtWidgets.QGraphicsView):
         #03dec2021  is nodesData available outside of this func? outside of this class?
         
         nodesName = nodesData.keys()
-        	
+            
         #26nov this vvv loop will go thru all nodes ( widgets/comps )
         for name in nodesName:
             preset = nodesData[name]['preset']
             position = nodesData[name]['position']
+	    px=position[0]
+	    py=position[1]
             position = QtCore.QPointF(position[0], position[1])
+	    print("loadgraph  y pos is ",py)
             alternate = nodesData[name]['alternate']
                 
             node = self.createNode(name=name,
@@ -1321,18 +1746,18 @@ class Nodz(QtWidgets.QGraphicsView):
                 #gather all the properties for this slot in this node
 
                 #07jan 2022 
-		#  note:  strategy... chg index to move the attr uo or down in stack
+                #  note:  strategy... chg index to move the attr uo or down in stack
                 index = attrsData.index(attrData)
-		#09jan2022 chg dotPosn to cnxnSide EXCEPT in SRC FILE SAVE and others
-		#  see that the chg is ok before chging the input file 
-		# AND chging hal2json script
-		# 09jan2022 well i was ok in loadGraph
-		# see what saveGraph does (is attr name cnxnSide?) YES ok
-		# so i can convert any file from doyPosn to cnxnSide 
-		# using save as, then del the oldstyle
-		# still need to edit the hal2json code!
+                #09jan2022 chg dotPosn to cnxnSide EXCEPT in SRC FILE SAVE and others
+                #  see that the chg is ok before chging the input file 
+                # AND chging hal2json script
+                # 09jan2022 well i was ok in loadGraph
+                # see what saveGraph does (is attr name cnxnSide?) YES ok
+                # so i can convert any file from doyPosn to cnxnSide 
+                # using save as, then del the oldstyle
+                # still need to edit the hal2json code!
                 #cnxnSide = attrData['dotPosn']
-		cnxnSide = attrData['cnxnSide']
+                cnxnSide = attrData['cnxnSide']
                 attrname = attrData['name']
                 netname=attrData['netname']		
                 
@@ -1341,28 +1766,27 @@ class Nodz(QtWidgets.QGraphicsView):
                 
                 preset = attrData['preset']
                 dataType = attrData['dataType']
-		#27dec2021 this ^^^ got the 'dataType va;ue from the node stanza in SaveMe or test3
-		# dataType will contain 'bool' 'float' 'u32' or 's32'
+                #27dec2021 this ^^^ got the 'dataType va;ue from the node stanza in SaveMe or test3
+                # dataType will contain 'bool' 'float' 'u32' or 's32'
                 plugMaxConnections = attrData['plugMaxConnections']
                 socketMaxConnections = attrData['socketMaxConnections']
                 
-		"""
-		#27 dec i dont hink this code is executed, not ever
+                """
+                #27 dec i dont hink this code is executed, not ever
                 # un-serialize data type if needed
                 if (isinstance(dataType, str) and dataType.find('<') == 0):
-		    #27dec when is there a '<' in a datatype???
-		    # i find none in SaveMe or test3
-		    # i dont think this code ever gets executed
-		    # the code chks that dataType is a string and that 1st char is '<'
-                    dataType = eval(str(dataType.split('\'')[1]))
+                #27dec when is there a '<' in a datatype???
+                # i find none in SaveMe or test3
+                # i dont think this code ever gets executed
+                # the code chks that dataType is a string and that 1st char is '<'
+                dataType = eval(str(dataType.split('\'')[1]))
                 """
-		
+        
                 #  this call needs gnrc   cnxnSide   NOT sourcecnxnSide  not targetcnxnSide
                 self.createAttribute(node=node, cnxnSide=cnxnSide, name=attrname, netname=netname, index=index, preset=preset, plug=plug, socket=socket, dataType=dataType, plugMaxConnections=plugMaxConnections, socketMaxConnections=socketMaxConnections )     
                 
-		
-		
-		
+                
+                
         # Apply connections data.
         
         #27nov the cnxns are read from SaveMe they are not created from data and logic
@@ -1371,71 +1795,71 @@ class Nodz(QtWidgets.QGraphicsView):
         #  each pair is a connection FROM 1st TO 2nd 
         #   so 1st Node.Slot iten is always a Plug,   always a Source
         #      2nd                is always a Socket, always a Target
-	# 28dec2021 revisited...
-	# break the string using string.rsplit('.',1)
-	# using rsplit
-	# halui.program.resume
-	# will give you halui.program and resume
-	#
+        # 28dec2021 revisited...
+        # break the string using string.rsplit('.',1)
+        # using rsplit
+        # halui.program.resume
+        # will give you halui.program and resume
+        #
         #02jan2022
-	# vvv connectionsData is a list of a pair of pins ALWAYS a pair
-	#  where does the None come from??
+        # vvv connectionsData is a list of a pair of pins ALWAYS a pair
+        #  where does the None come from??
         connectionsData = data['CONNECTIONS']
-	
+    
         for connection in connectionsData:
-	    #02dec2022
+            #02dec2022
             # the connection may not have a source (1st line is None/none)
-	    # the connection may not have a dest   (2nd line is None/noe
-	    # i need to autogenerate a plug or socket as needed
-	    #  the name of the plug/socket will be created 
-	    #    signalnameDOTsource
-	    # or signalnameDOTdest
-	    # 
-	    # will these 'none' couplets have 1 or 2  lines?
-	    #
-	    # the file beg=ing read may only have 1 pin line
-	    # 
-	    # well we just read the halcmd show sig file..
-	    # and it has lines like...
+            # the connection may not have a dest   (2nd line is None/noe
+            # i need to autogenerate a plug or socket as needed
+            #  the name of the plug/socket will be created 
+            #    signalnameDOTsource
+            # or signalnameDOTdest
+            # 
+            # will these 'none' couplets have 1 or 2  lines?
+            #
+            # the file beg=ing read may only have 1 pin line
+            # 
+            # well we just read the halcmd show sig file..
+            # and it has lines like...
             # bit           FALSE  adir
             #                      ==> parport.0.pin-09-out
-	    # i can get thge dir, 
-	    #  and thus the 'source/destination quality 
-	    #    from ==> and <==
-	    #
-	    
+            # i can get thge dir, 
+            #  and thus the 'source/destination quality 
+            #    from ==> and <==
+            #
+        
             source = connection[0] # the 1ts Node.Slot item is a source
-	    #27dec these 2 lines , given halui.program.resume
-	    #   will set sourceNode as halui
-	    #   and      sourceAttr as program.resume
-	    #
-	    #27dec2021  use string.rsplit('.',1)
-	    # which, when given halui.program.resume
-	    # yields sourceNode = halui.program
-	    # yields sourceAttr = resume
+            #27dec these 2 lines , given halui.program.resume
+            #   will set sourceNode as halui
+            #   and      sourceAttr as program.resume
+            #
+            #27dec2021  use string.rsplit('.',1)
+            # which, when given halui.program.resume
+            # yields sourceNode = halui.program
+            # yields sourceAttr = resume
             #sourceNode = source.split('.')[0] # the first name is the sourceNode
             #sourceAttr = source.split('.')[1] # the last  name is the sourceSlot ( a Plug)
-	    #NOTE SaveMe must be adjusted for multiple nodes
-	    #  like halui AND halui.program
-	    #  maybe others
+            #NOTE SaveMe must be adjusted for multiple nodes
+            #  like halui AND halui.program
+            #  maybe others
             sourceNode = source.rsplit('.',1)[0] # the first name is the sourceNode
             sourceAttr = source.rsplit('.',1)[1] # the last  name is the sourceSlot ( a Plug)
             
             target = connection[1] # the 2nd Node.Slot utem is a target
-	    
-	    #01jan2021 2301 target was "None"
-	    #dbug print("target is ",str(target))
-	    
-	    #27dec2021 these 2 lines vvv given halui.program.resume
-	    #   will set targetNode as halui
-	    #   and      targetAttr as program.resume
-	    #21dec2021 use rsplit see above
-	    #NOTE SaveMe must be adjusted for multiple nodes
-	    #  like halui AND halui.program
-	    #  maybe others
+        
+            #01jan2021 2301 target was "None"
+            #dbug print("target is ",str(target))
+        
+            #27dec2021 these 2 lines vvv given halui.program.resume
+            #   will set targetNode as halui
+            #   and      targetAttr as program.resume
+            #21dec2021 use rsplit see above
+            #NOTE SaveMe must be adjusted for multiple nodes
+            #  like halui AND halui.program
+            #  maybe others
             #targetNode = target.split('.')[0] # the first name is the targetNode
             #targetAttr = target.split('.')[1] # the last  name is the targetSlot ( a Socket)
-	    
+        
             targetNode = target.rsplit('.',1)[0] # the first name is the targetNode
             targetAttr = target.rsplit('.',1)[1] # the last  name is the targetSlot ( a Socket)
 
@@ -1444,16 +1868,16 @@ class Nodz(QtWidgets.QGraphicsView):
             #   meaning  find the netname of the PLUG of interest
             nname = None
             n = 0
-	    
-	    #print(sourceNode)
-	    
+        
+            #print(sourceNode)
+        
             for m in nodesData[sourceNode]['attributes']:
                 if(str(m['name']) == sourceAttr):
                     nname = nodesData[sourceNode]['attributes'][n]['netname']
                     #print("for node ", sourceNode, " for Plug ", sourceAttr, "netname is ", nname)
                 n = n + 1
         
-	    
+        
             self.createConnection(sourceNode, sourceAttr, targetNode, targetAttr, nname, cnxnSide )
         
         # 12nov this vvv is a spcl method for scene(s)  (Not a dict update )
@@ -1470,57 +1894,57 @@ class Nodz(QtWidgets.QGraphicsView):
         # so it is NOT the code used to drag a new bez from plug to skt
         
         plug = self.scene().nodes[sourceNode].plugs[sourceAttr]
-	"""
-	strg1="...targetNode is "
-	strg2=str(targetNode)
-	strg3=strg1+strg2
-	print(strg3)
-	
-	strg1="...targetAttr is "
-	strg2=str(targetAttr)
-	strg3=strg1+strg2
-	print(strg3)
-	"""
-	# vvv KeyError: 'gv2offset13-0.0'
-	#  that node doesnt exist yet ( my swag why it fails )
-	# no  chging SaveMe gv2offset13.0.0.ena
-	#                to gv2offset13.0.0-ena 
-	#  ( all others in hat node used - inside pin name)
-	# ^^^ stopped the error
-	# yeah it stopped the error
-	#  but why no error before? did i suddenlu chg a - to a . recently
-	# and
-	# why cant i have a dor in the attribute name?
-	# tests say i can
-	# BUT it chgs where the string gets broken!
-	# the complaint was KeyError: 'gv2offset13-0.0'
-	# which made node name gv2offset13-0.0
-	#        and pin  name ena
-	# vs
-	#            node name gv2offset13-0
-	#            pin  name 0.ena
-	#
-	#the strg given to the code is "gv2offset13-0.0.ena"
-	# i prev used split which yields node gv2offset13-0  pin 0.ena
-	# and i now use rplit which gives node gv2offset13.0  pin ena
-	#which is better?
-	# nodename with sequence or axis tag?
-	#   gv2offset13-0.0  parport.0  or2.0  axis.z
-	#   ena              pin-01-in  in0    enable
-	# or node name w/o
-	#   gv2offset13-0   parport     or2    axis
-	#   0.ena           0.pin-01-in 0.in0  z.enable
-	# to my eye , keep the ndx/tag with the nodename
-	#is that what i have here on nodz_demo suite?
-	#  yes node is gv2offset13-0.0   pins have no 0. prefix
-	#is that what i have in test5.py ( halcmd show pin TO json)
-	#  yes nodes can end in .LETTER or .DIGIT
-	#   and no pins begin with LETTER.  nor DIGIT.
-	#this code body does noy use split()
-	# this code body DOES use rsplit()
+        """
+        strg1="...targetNode is "
+        strg2=str(targetNode)
+        strg3=strg1+strg2
+        print(strg3)
+        
+        strg1="...targetAttr is "
+        strg2=str(targetAttr)
+        strg3=strg1+strg2
+        print(strg3)
+        """
+        # vvv KeyError: 'gv2offset13-0.0'
+        #  that node doesnt exist yet ( my swag why it fails )
+        # no  chging SaveMe gv2offset13.0.0.ena
+        #                to gv2offset13.0.0-ena 
+        #  ( all others in hat node used - inside pin name)
+        # ^^^ stopped the error
+        # yeah it stopped the error
+        #  but why no error before? did i suddenlu chg a - to a . recently
+        # and
+        # why cant i have a dor in the attribute name?
+        # tests say i can
+        # BUT it chgs where the string gets broken!
+        # the complaint was KeyError: 'gv2offset13-0.0'
+        # which made node name gv2offset13-0.0
+        #        and pin  name ena
+        # vs
+        #            node name gv2offset13-0
+        #            pin  name 0.ena
+        #
+        #the strg given to the code is "gv2offset13-0.0.ena"
+        # i prev used split which yields node gv2offset13-0  pin 0.ena
+        # and i now use rplit which gives node gv2offset13.0  pin ena
+        #which is better?
+        # nodename with sequence or axis tag?
+        #   gv2offset13-0.0  parport.0  or2.0  axis.z
+        #   ena              pin-01-in  in0    enable
+        # or node name w/o
+        #   gv2offset13-0   parport     or2    axis
+        #   0.ena           0.pin-01-in 0.in0  z.enable
+        # to my eye , keep the ndx/tag with the nodename
+        #is that what i have here on nodz_demo suite?
+        #  yes node is gv2offset13-0.0   pins have no 0. prefix
+        #is that what i have in test5.py ( halcmd show pin TO json)
+        #  yes nodes can end in .LETTER or .DIGIT
+        #   and no pins begin with LETTER.  nor DIGIT.
+        #this code body does noy use split()
+        # this code body DOES use rsplit()
 
         socket = self.scene().nodes[targetNode].sockets[targetAttr]
-                	
+                    
         connection = ConnectionItem(plug.center(), socket.center(), plug, socket, netname, plug.cnxnSide )
         
         connection.plugNode = plug.parentItem().name
@@ -1537,7 +1961,7 @@ class Nodz(QtWidgets.QGraphicsView):
         connection.updatePath()
         
         self.scene().addItem(connection)
-        	
+            
         return connection
     
     def evaluateGraph(self):
@@ -1681,9 +2105,10 @@ class NodeItem(QtWidgets.QGraphicsItem):
      A graphic representation of a node containing attributes.
     """
     #16dec2021 what kindf of obj is a nodeitem?
+    #22jan2022 i dont see nodeitem knows position x,y
     
     def __init__(self, name, alternate, preset, config):
-	# class NodeItem  method __init__
+        # class NodeItem  method __init__
         """
          Initialize the class.
 
@@ -1725,13 +2150,13 @@ class NodeItem(QtWidgets.QGraphicsItem):
         #14dec2021 add tooltip for nodeIten
         # this works, but clobbers any tooltip meant fo a slot in the NodeItem
         #  meaning the NodeItem tooltip pops up ANTWHERE inside node
-	
+    
         strg1="NodeItem "
         strg2=self.name
         strg3=strg1+strg2
-	"""
-        print(strg3)
-	"""
+        """
+            print(strg3)
+        """
         self.setToolTip(strg3)
         
     @property
@@ -1842,7 +2267,7 @@ class NodeItem(QtWidgets.QGraphicsItem):
                          in order to highlight attributes of the same
                          type while performing a connection.
         """
-        	
+            
         if name in self.attrs:
             print('An attribute with the same name already exists on this node : {0}'.format(name))
             print('Attribute creation aborted !')
@@ -1884,6 +2309,7 @@ class NodeItem(QtWidgets.QGraphicsItem):
         self.update()
 
     def _deleteAttribute(self, index):
+    #class nodeitem _deleteAttribute
         """
          Remove an attribute by reducing the node, removing the label
          nd the connection items.
@@ -1921,6 +2347,7 @@ class NodeItem(QtWidgets.QGraphicsItem):
         self.update()
 
     def _remove(self):
+    #class nodeitem
         """
          Remove this node instance from the scene.
 
@@ -2097,76 +2524,64 @@ class NodeItem(QtWidgets.QGraphicsItem):
 
         super(NodeItem, self).mousePressEvent(event)
 
-#04jan2022 i can l btn dbl clk on a node and get the ShowMe action
-# chg to allow ctrl l dbl clk for editing node
-# DONE 1st just print a msg saying event noticed
-# Done next get node name so later editig possible
-#next open an editor on the SaveMe/test2 file scrolled to the node to edit
-#
-#notes:
-# if (event.button() == QtCore.Qt.LeftButton and
-#      event.modifiers() == QtCore.Qt.NoModifier and
-#      event.modifiers() == QtCore.Qt.AltModifier):
-#      event.modifiers() == QtCore.Qt.ControlModifier):
-#      event.modifiers() == QtCore.Qt.ShiftModifier):
+    #04jan2022 i can l btn dbl clk on a node and get the ShowMe action
+    # chg to allow ctrl l dbl clk for editing node
+    # DONE 1st just print a msg saying event noticed
+    # Done next get node name so later editig possible
+    #next open an editor on the SaveMe/test2 file scrolled to the node to edit
+    #
+    #notes:
+    # if (event.button() == QtCore.Qt.LeftButton and
+    #      event.modifiers() == QtCore.Qt.NoModifier and
+    #      event.modifiers() == QtCore.Qt.AltModifier):
+    #      event.modifiers() == QtCore.Qt.ControlModifier):
+    #      event.modifiers() == QtCore.Qt.ShiftModifier):
 
-# why was this called? who called it?
-# can i qualify it with modifiers AFTER getting here 
-#  or is the action already filtered and modifiers after not allowed/effective
-#
+    # why was this called? who called it?
+    # can i qualify it with modifiers AFTER getting here 
+    #  or is the action already filtered and modifiers after not allowed/effective
+    #
     def mouseDoubleClickEvent(self, event):
-	#04jan2022 this vv correctly sense the ctrl left dbl clk on a node
-	# the return is used to stop further processing
-	# i get 
-	#  msgs 1  on_nodeDoubleClick(nodeName):
-	#           ^^^ this from my code in here
-	#       2  Ctl Mid Btn DblClk
-	#           ^^^ this is from my code in here
-        # and msg  ('node selected : ', [u'hal_manualtoolchange'])
-        #           ^^^ this is from nodz_demo 
-        #             	              on_nodeDoubleClick(nodeName):
-	#
+	# class NodeItem func mouseDoubleClickEvent
 
-        #09jan2022 try usin 'workingFile' when editing nodes
+	#12jan this is NOT execd if i ctrl left dblclk on a node
+	#  well it works AFTER i do a manpage, 
+        # prob is i dont get HERE class Node func mouseDoubleClick
         global workingFile
+	print("workingFile is ", workingFile)
 	
-	#print(self.name)
-	nodeClicked=self.name
-	if event.button() == Qt.LeftButton and event.modifiers() & Qt.ControlModifier:
-	    nodeclkd=self.name
-            strg1=("ctrl left dbl click on node ")
-	    strg2=nodeClicked;
-	    strg3=strg1+strg2
-	    print(strg3)
-	    
-            # dont do anything yet just see if it opens
-            #09jan2022 i need to know where the file that drew the scene is
-            #  just saying 'SaveMe' deosnt work now that files are in logical project folders
-            # so try to make a 'lastGraphFileLoaded'	    
-	    # is 'workingFile' what i want?
-	    #YES   stop for tonoght HERE HERE HERE
-	    #self.scene().views()[0].doEditSaveMe("SaveMe")
-	    self.scene().views()[0].doEditSaveMe(workingFile)
-	    
-	    return
-	
-        """
-         Emit a signal.
-        """
+	#15jan i noticed that ctrl shift left press wou;d open editor
+	# but prior  ctrl left press did not, so added shift
+	# i tested over and over, i see OFTEN shift ctrl modifier not 'seen'
+	# prob is not node, node is always reported correctly
+	# prob is not ctrl nor shift keys , they report pressed
+	# but the mouse modifiers not always correct
+        nodeClicked=self.name
+        if event.button() == Qt.LeftButton:
+	    if((event.modifiers() & QtCore.Qt.ControlModifier ) and (event.modifiers() & QtCore.Qt.ShiftModifier )):
+		print("shift control modifier")
+                nodeclkd=self.name
+                strg1=("shift ctrl left dbl click on node ")
+                strg2=nodeClicked;
+	        strg3=workingFile
+                strg4=strg1+strg2+strg3
+                print(strg4)
+                self.scene().views()[0].doEditSaveMe(workingFile)
+                return
 
-	#03jan2022 this vvv should inherited all actions in orig event handler
-	# i think ...  but i see no print in console, so its not treu !?!? :-/
+	#12jan orig starts here----------
+        """
+        Emit a signal.
+
+        """
         super(NodeItem, self).mouseDoubleClickEvent(event)
-	
-	#09jan2022 chg from global filePath to workingFile
-	# BUT i dont see workingFile OR filePath used in this func
-	#   mouseDoubleClickEvent. nope not used  so rem it out
-        ##global filePath
-	#global workingFile
-        
+        self.scene().parent().signal_NodeDoubleClicked.emit(self.name)
+	#12jan orig ends here-------------
 	
         if(self.alternate != "" ):
-
+	    #14jan
+	    # print("mouseDblClkEvent")
+	    
             # TODO handle door and circuit/code/thing
             # what if door AND a circuit?
             # like on SaveMe , ArduinoSPindleControl
@@ -2177,19 +2592,25 @@ class NodeItem(QtWidgets.QGraphicsItem):
             if((key1 in self.attrsData) or (key2 in self.attrsData)):
                 #print(self.alternate)
                 #17dec this vvv makes global happy
-		#
-		#09jan dont use global, use self.alternate
+                #
+                #09jan dont use global, use self.alternate
                 #filePath = self.alternate
                 #self.scene().views()[0].loadGraph()
-		self.scene().views()[0].loadGraph(self.alternate)
+                self.scene().views()[0].loadGraph(self.alternate)
             else:
+		#14jan
+		#print("mouseDblClkEvent, not Enter, not Exit")
+		
                 #17dec we know self.alternate != ""
-                # and we already handled RNTER and EXIT
+                # and we already handled ENTER and EXIT
                 # so must be thing/code/circuit
             
                 # check for ShowMe
                 key = 'ShowMe'
                 if(key in self.attrsData):
+		    #12jan
+		    #print(self.attrsData['ShowMe']['dataType'])
+		    
                     if(self.attrsData['ShowMe']['dataType'] == "<type 'thing'>"):
                         #print('its a thing, need a jpg & viewer')
                         # 17dec TODO should pass the fname to doit()
@@ -2198,7 +2619,7 @@ class NodeItem(QtWidgets.QGraphicsItem):
                         self.scene().views()[0].doImg(picFile)
             
                     elif(self.attrsData['ShowMe']['dataType'] == "<type 'code'>"):
-                        #print('its code, need a text viewer')
+                        print('its code, need a text viewer')
                         txtFile=self.alternate
                         self.scene().views()[0].doTxt(txtFile)
                     elif(self.attrsData['ShowMe']['dataType'] == "<type 'circuit'>"):
@@ -2220,10 +2641,11 @@ class NodeItem(QtWidgets.QGraphicsItem):
                 else:
                     print('its a not thing,text.circuit , yet alternate is not empty, why am i here?')
         else:
-	    # 08jan print(self.name)
+            # 08jan print(self.name)
             self.scene().parent().signal_NodeDoubleClicked.emit(self.name)
 
     def mouseMoveEvent(self, event):
+        #class slotItem func mouseMoveEvent
         if self.scene().views()[0].gridVisToggle:
             if self.scene().views()[0].gridSnapToggle or self.scene().views()[0]._nodeSnap:
                 gridSize = self.scene().gridSize
@@ -2242,7 +2664,7 @@ class NodeItem(QtWidgets.QGraphicsItem):
                 super(NodeItem, self).mouseMoveEvent(event)
 
     def mouseReleaseEvent(self, event):
-        # this mouseRelaseEvent is for class NodeItem
+        # class NodeItem func mouseRelaseEvent
         
         # Emit node moved signal.
         self.scene().signal_NodeMoved.emit(self.name, self.pos())
@@ -2319,24 +2741,24 @@ class SlotItem(QtWidgets.QGraphicsItem):
         self.maxConnections = maxConnections
         
         #14dec2021 add tooltip for slot
-	#08jan hover show obj as node plug socket or signal
-	#  hover never reports slot
+        #08jan hover show obj as node plug socket or signal
+        #  hover never reports slot
         strg1="slot "
         strg2=self.attribute
         strg3=strg1+strg2
         self.setToolTip(strg3)
 
         #07jan connect CANT
-	# TypeError: connect() takes exactly 3 arguments (2 given)
+        # TypeError: connect() takes exactly 3 arguments (2 given)
         # so strike it out
         #self.connect(self.handleSlotClick)    
-	#07jan -- end new event handler for plugite,s
+        #07jan -- end new event handler for plugite,s
 
 
     #07jan useless becuz i cant connect it vvv so strijke it out
     #def handleSlotClick(self):
     #	print("handleSlotClick rescted")
-	
+    
     def accepts(self, slot_item):
         """
             Only accepts plug items that belong to other nodes, 
@@ -2382,44 +2804,44 @@ class SlotItem(QtWidgets.QGraphicsItem):
         """
          class SocketItem  Start the connection process.
         """
-	
-	## 08jan vvv prints empty dict
-	#print(event.button().__dict__)
-	##08jan vvv useless, prints list of internal funcs, not poperties/attributes
-	#print(dir(event.button()))
-	
-	#09jan NG show me that a mouse event occured
-	# these 3 vvv DO work, i get the msg in console
-	if (event.button() == QtCore.Qt.LeftButton):
-	    print("top of slotitem mousepressevent  left btn pressed")
-	
-	if (event.button() == QtCore.Qt.MiddleButton):
-	    print("top of slotitem mousepressevent  middle btn pressed")
+        
+	"""
+        #09jan these 3 vvv DO work, i get the msg in console
+	#  but not useful
+        if (event.button() == QtCore.Qt.LeftButton):
+            print("top of slotitem mousepressevent  left btn pressed")
+    
+        if (event.button() == QtCore.Qt.MiddleButton):
+            print("top of slotitem mousepressevent  middle btn pressed")
 
-	if (event.button() == QtCore.Qt.RightButton):
-	    print("top of slotitem mousepressevent  right btn pressed")
-	
-	
-	#08jan i dont see this printed on startup, i think useless
+        if (event.button() == QtCore.Qt.RightButton):
+            print("top of slotitem mousepressevent  right btn pressed")
+        """
+    
+        #08jan i dont see this printed on startup, i think useless
         if (event.button() == QtCore.Qt.LeftButton):
             if( not hasattr(self, 'netname') ):
-		#08jan
-		print("netname set to - char")
+                #08jan
+                print("netname set to - char")
                 self.netname = "-"
-	    
-	    #08jan make same
-	    #08jan these vvv work, but i DEDUCE the skt/plug  from netname
-	    #       i get the clk info from the SLOT
+        
+            #08jan make same
+            #08jan these vvv work, but i DEDUCE the skt/plug  from netname
+            #       i get the clk info from the SLOT
+
+            """
+	    #14jan work but useless
             if(self.netname == '-'):
                 strg1="in SlotItem, left mousePress on skt"
                 print(strg1)
             else:
                 strg1="in SlotItem, left mousePress on plug"
                 print(strg1)
-            
+            """
+	    
             if ( self.netname != '-' ):
-		#08jan  this is class SlotItem func mousePressEvent
-		# is this where drag bez begins? YES
+                #08jan  this is class SlotItem func mousePressEvent
+                # this is where drag bezier begins
                 self.newConnection = ConnectionItem(self.center(), self.mapToScene(event.pos()), self, None, self.netname, self.cnxnSide )
                 
                 self.connections.append(self.newConnection)
@@ -2430,8 +2852,7 @@ class SlotItem(QtWidgets.QGraphicsItem):
                 nodzInst.currentDataType = self.dataType
             
             else:
-		#08jan else pass the event along... to parent = Node?
-		# need to study this signal slot stuff
+                #08jan else pass the event along... to parent = Node?
                 super(SlotItem, self).mousePressEvent(event)
             
     def mouseMoveEvent(self, event):
@@ -2444,7 +2865,6 @@ class SlotItem(QtWidgets.QGraphicsItem):
         if nodzInst.drawingConnection:
             mbb = utils._createPointerBoundingBox(pointerPos=event.scenePos().toPoint(),
                                                   bbSize=config['mouse_bounding_box'])
-
             # Get nodes in pointer's bounding box.
             targets = self.scene().items(mbb)
 
@@ -2646,7 +3066,7 @@ class PlugItem(SlotItem):
      A graphics item representing an attribute out hook.
     """
     def __init__(self, parent, cnxnSide, attribute, netname, index, preset, dataType, maxConnections):
-        
+        #class PlugItem func __init__
         """
          Initialize the class.
 
@@ -2687,11 +3107,12 @@ class PlugItem(SlotItem):
         self.setToolTip(strg3)
     
     def _createStyle(self, parent):
+        #class PlugItem func _createStyle
         """
          Read the attribute style from the configuration file.
-	 
-	 identical to _createStyle of SocketItem  
-	 ( except the  utils._convertsDataToColor get the strg 'socket' there
+     
+     identical to _createStyle of SocketItem  
+     ( except the  utils._convertsDataToColor get the strg 'socket' there
         """
         config = parent.scene().views()[0].config
         self.brush = QtGui.QBrush()
@@ -2731,18 +3152,16 @@ class PlugItem(SlotItem):
             # Already connected.
             self.connections[self.maxConnections-1]._remove()
         
-        #19nov force the parent into the struct
+        #19nov add the parent into the struct
         #27nov TODO  is this needed? used?
         socket_item.parent = socket_item.parentItem().name
         
-        # Populate connection.
+        # Populate connection. plug,socket, plugAttrs
         connection.socketItem = socket_item
-        
         connection.plugNode = self.parentItem().name
-        
         connection.plugAttr = self.attribute
         
-        # Add socket to connected slots.
+        # Add socket to list of connected slots.
         if socket_item in self.connected_slots:
             self.connected_slots.remove(socket_item)
         
@@ -2750,17 +3169,20 @@ class PlugItem(SlotItem):
         
         # Add connection.
         #20nov this vvv looks like it ensures no duplicate cnxns 
-        #  ( like on top of itselfm which you woukd not see )
+        #  ( like on top of itself, which you would not see )
         if connection not in self.connections:
             self.connections.append(connection)
         
         # Emit signal.
         nodzInst = self.scene().views()[0]
         nodzInst.signal_PlugConnected.emit(connection.plugNode, connection.plugAttr, connection.socketNode, connection.socketAttr)
-        
+
     def disconnect(self, connection):
+	#class PlugItm func disconnect   
+	#14jan this had been removed by remming entire func
         """
-         Disconnect the given connection from this plug item.
+        Disconnect the given connection from this plug item.
+
         """
         # Emit signal.
         nodzInst = self.scene().views()[0]
@@ -2771,32 +3193,34 @@ class PlugItem(SlotItem):
             self.connected_slots.remove(connection.socketItem)
         # Remove connection
         self.connections.remove(connection)
-	
-    #08jan  func not in older code vvv
-    # 08 THIS was cause of loss of ability to drag bez from plug to slot
-    #def mousePressEvent(self, event):
-    #    #17dec in PlugItem method mousePress
-    #    """
-    #     class PlugItem
-    #    """
-    #
-    #    #if (event.button() == QtCore.Qt.LeftButton):
-    #	#    strg1="inPlugItem mousePressEvent modifiers ignored"
-    #	#    print(strg1)    
-    #
-    #    if (event.button() == QtCore.Qt.LeftButton
-    #          and event.modifiers() == QtCore.Qt.ShiftModifier):
-    #	this does not agree with prev line     strg1="inPlugItem mousePressEvent NO modifiers"
-    #	    print(strg1)    
-    #	    
-	
+
+    #14jan 2022 this whole func had been remmed out, reinstate above 14jan
+    #def disconnect(self, connection):
+        """
+         Disconnect the given connection from this plug item.
+        """
+        """    
+        # class PlugItem func diconnect
+        print("class PlugItem func disconnect")
+    
+        # Emit signal.
+        nodzInst = self.scene().views()[0]
+        nodzInst.signal_PlugDisconnected.emit(connection.plugNode, connection.plugAttr, connection.socketNode, connection.socketAttr)
+
+        # Remove connected socket from plug
+        if connection.socketItem in self.connected_slots:
+            self.connected_slots.remove(connection.socketItem)
+        # Remove connection
+        self.connections.remove(connection)
+        """
+    
 class SocketItem(SlotItem):
     """
      A graphics item representing an attribute in hook.
     """
     
     def __init__(self, parent, cnxnSide, attribute, netname, index, preset, dataType, maxConnections):
-
+        #class SocketItem func __init__
         """
          Initialize the socket.
 
@@ -2825,30 +3249,27 @@ class SocketItem(SlotItem):
         self.preset = preset
         self.slotType = 'socket'
 
-        #ok 07jan 2022 plugitem doesnt have these 3 lines
+        #----beg tjp additions------- my own attrs
         self.cnxnSide=cnxnSide
         self.parent=parent
         self.index= index
-
-        #fixed 17dec2021 i never stored netname,cnxnSide,parent, index
         self.netname=netname
+        #----end tjp additions-------
 
-        #ok 07jan2022 the order of methods and netname reversed from plugitem code        
         # Methods.
         self._createStyle(parent)
 
         
+        #----beg more tjp additions-------
         #14dec2021 add tooltip for skt
-	#06jan 
-	# note the kbd modifiers can be accessed during hover
-	#PySide2.QtGui.QHoverEvent(type, pos, oldPos[, modifiers=Qt.NoModifier])
-	
         strg1="socket "
         strg2=self.attribute
         strg3=strg1+strg2
         self.setToolTip(strg3)
+        #----end more tjp additions-------
 
     def _createStyle(self, parent):
+	#class SocketItem func _createStyle
         """
          Read the attribute style from the configuration file.
         """
@@ -2858,25 +3279,20 @@ class SocketItem(SlotItem):
         self.brush.setColor(utils._convertDataToColor(config[self.preset]['socket']))
 
     def boundingRect(self):
+        #class SocketItem func boundingRect
         """
          The bounding rect based on the width and height variables.
         """
         
-        #width = height = self.parentItem().attrHeight / 2.0
-        #17dec text runs outside of gui box, and theres space between gui boxes
-        # still outside, its the text baseline thats ng
-        #height = self.parentItem().attrHeight / 2.0
         height = self.parentItem().attrHeight -4
-        
-        #17dec FIXED sensitive area is shy of rt edge of node by ~7
         width  = self.parentItem().baseWidth + 7
 
         nodzInst = self.scene().views()[0]
+        #14jan notice how he got infor from cfg file
         config = nodzInst.config
 
-        #17dec SIMPLIFIED all gui rect slots begin  x -7
+        #17dec SIMPLIFIED all gui rect slots begin  x = -7
         x = -7
-
         y = (self.parentItem().baseHeight - config['node_radius'] +
             (self.parentItem().attrHeight/4) +
              self.parentItem().attrs.index(self.attribute) * self.parentItem().attrHeight )
@@ -2885,21 +3301,19 @@ class SocketItem(SlotItem):
         return rect
 
     def connect(self, plug_item, connection):
-        #14dec2021 class SktItem method connect
+        #class SocketItem func connect
+        
         # this cnx a skt to a plug
-        # i dont hink i want this, 
-        # i want digraph and direction is plug to skt
+        # i dont think i want this, 
+        # i want a digraph and direction is ALWAYS ONLY plug to skt
         # never skt to plug
         """
          Connect to the given plug item.
          20nov this was neutered by add a=1 and remming rest, that action screwed save, so undo
         """
-        #14dec i dont see this vvv printed when i clk on a dot
-        # i never see this printed after load ( lots during loadgraph)
-        #print("in class SocketItem method connect")
         numcnxns = len(self.connections)
-        
-        #21nov i dont think the orig logic is right\
+
+        #21nov i dont think the orig logic is right
         """
             if self.maxConnections>0 and len(self.connected_slots) >= self.maxConnections:
                 # Already connected.
@@ -2909,6 +3323,7 @@ class SocketItem(SlotItem):
         #21nov  new wrapper if  'for create new cnxn'
         #21nov well this dis-allowed a new cnxn in db, but does not prevent bez on screen
         #  so the draw code should not be called
+	#14jan i always set maxCnxns to infinite, so test maybe unnecc
         if( numcnxns < self.maxConnections ):
             #then allow a new cnxn
             
@@ -2929,9 +3344,12 @@ class SocketItem(SlotItem):
             nodzInst.signal_SocketConnected.emit(connection.plugNode, connection.plugAttr, connection.socketNode, connection.socketAttr)
             
     def disconnect(self, connection):
+        #class SocketItem func disconnect
         """
          Disconnect the given connection from this socket item.
         """
+        print("class socketItem func disconnect")
+    
         
         # Emit signal.
         nodzInst = self.scene().views()[0]
@@ -2944,6 +3362,7 @@ class SocketItem(SlotItem):
         self.connections.remove(connection)
            
 class ConnectionItem(QtWidgets.QGraphicsPathItem):
+    #class ConnectionItem
     """
      A graphics path representing a connection between two attributes.
     """
@@ -2952,7 +3371,7 @@ class ConnectionItem(QtWidgets.QGraphicsPathItem):
     #
     
     def __init__(self, source_point, target_point, source, target, netname, cnxnSide ):
-        
+        #class ConnectionItem func __init__
         """
          Initialize the class.
 
@@ -3021,11 +3440,12 @@ class ConnectionItem(QtWidgets.QGraphicsPathItem):
         
         
     def _createStyle(self):
+        #class ConnectionItem func _createStyle
         """
          Read the connection style from the configuration file.
         """
         config = self.source.scene().views()[0].config
-	#14dec2021 this vvv is orig code not mine
+        #14dec2021 this vvv is orig code not mine
         self.setAcceptHoverEvents(True)
         self.setZValue(-1)
 
@@ -3033,6 +3453,7 @@ class ConnectionItem(QtWidgets.QGraphicsPathItem):
         self._pen.setWidth(config['connection_width'])
 
     def _outputConnectionData(self):
+        #class ConnectionItem func _outputConnectionData
         """
          tjp  i think this goofy "{0}.{1}".format(self.socketNode, self.socketAttr)
           ia dam screwy way to build a string given 2 args, whcih are {0].{1}
@@ -3044,13 +3465,56 @@ class ConnectionItem(QtWidgets.QGraphicsPathItem):
                 "{0}.{1}".format(self.socketNode, self.socketAttr))
         
     def mousePressEvent(self, event):
-        #14dec class CnxnItem method mousePress
+        #class ConnectionItem func mousePressEvent
+
+        # this is what is done when a mouse press happens on a cnxn
+        # i want a left ctrl press  to delete it
+        # i want a left nomod press to NOT delete it
+        # yet the orig notes say 'snap bez to mouse'  
+        #
+        # 12jan the 1st l press is ok, a 2nd on same cnxn blows up
+        #  saying 
+        #   File "/home/tomp/Nodz/nodz_main.py", line 3102, in mousePressEvent
+        # self.source.disconnect(self)
+        #AttributeError: 'NoneType' object has no attribute 'disconnect'
+
+        print("classCnxnItem mousePress")
+        """
+        # print skt and plug info
+        # self is a cnxnItem
+        strg1="cnxn item socketNode ="
+        strg2=self.socketNode
+        strg3=strg1+strg2
+        print(strg3)
+        strg1="cnxn item socketAttr ="
+        strg2=str(self.socketAttr)
+        strg3=strg1+strg2
+        print(strg3)
+        strg1="cnxn item plugNode ="
+        strg2=self.plugNode
+        strg3=strg1+strg2
+        print(strg3)
+        strg1="cnxn item plugAttr ="
+        strg2=str(self.plugAttr)
+        strg3=strg1+strg2
+        print(strg3)
+        """
+        #13jan blows up after these prints... with a plain l press on a node
+    
         """
          Snap the Connection to the mouse.
          
          TJP what doe sthis func do?
          what is source and target
         """
+    
+        # idea:  if event == left btn press
+        #         and modifier == NoMod:
+        #        then return...
+        # no i think some damage already done , like half of cnxn already gone, just not shown on graph
+        # what is normal way to delete a cnxn?
+    
+    
         # 13nov this looks like a handy universal way to get verything available to a func
         nodzInst = self.scene().views()[0]
         
@@ -3064,6 +3528,19 @@ class ConnectionItem(QtWidgets.QGraphicsPathItem):
         
         if(hasattr(self.target,'disconnect')):
             
+            #13jan this code can discnx the plug end or the skt end
+            # i want to dscncx both ends
+            self.target.disconnect(self)
+            self.target = None
+            if(hasattr(self.source,'disconnect')):
+                self.source.disconnect(self)
+                self.source = None
+            self._remove()
+            
+            #   nodzInst.sourceSlot = self.source
+            #   nodzInst.sourceSlot = self.target
+            
+            """            
             # 13nov code here vvv is exec'd WHILE dragging the new bez cnxn
             d_to_target = (event.pos() - self.target_point).manhattanLength()
             d_to_source = (event.pos() - self.source_point).manhattanLength()
@@ -3082,22 +3559,24 @@ class ConnectionItem(QtWidgets.QGraphicsPathItem):
                 
                 self.source = None
                 nodzInst.sourceSlot = self.target
-                
+            """    
         self.updatePath()
             
     def mouseMoveEvent(self, event):
-      #15dec class CnxnItem method mouseMoveEvent
-      """
-       Move the Connection with the mouse.
-      """
-      if (event.button() == QtCore.Qt.RightButton):	
-        nodzInst = self.scene().views()[0]
-        config = nodzInst.config
+        #class ConnectionItem func mouseMveEvent
+        """
+           Move the Connection with the mouse.
+        """
 
-        mbb = utils._createPointerBoundingBox(pointerPos=event.scenePos().toPoint(),
+        #if (event.button() == QtCore.Qt.RightButton):
+
+	nodzInst = self.scene().views()[0]
+	config = nodzInst.config
+
+	mbb = utils._createPointerBoundingBox(pointerPos=event.scenePos().toPoint(),
                                               bbSize=config['mouse_bounding_box'])
 
-        # Get nodes in mouse pointer's bounding box.
+	# Get nodes in mouse pointer's bounding box.
         targets = self.scene().items(mbb)
 
         if any(isinstance(target, NodeItem) for target in targets):
@@ -3120,7 +3599,8 @@ class ConnectionItem(QtWidgets.QGraphicsPathItem):
         """
          Create a Connection if possible, otherwise delete it.
         """	
-        #21nov this mouseReleaseEvenet is for class CnxnItem
+        #class ConnectionItem func mouseReleaseEvent
+    
         nodzInst = self.scene().views()[0]
         nodzInst.drawingConnection = False
 
@@ -3131,10 +3611,8 @@ class ConnectionItem(QtWidgets.QGraphicsPathItem):
             self.updatePath()
             super(ConnectionItem, self).mouseReleaseEvent(event)
             return
-
+                    
         if self.movable_point == 'target_point':
-            
-            #21nov accepts()  can reject the cnxn if numcnxnx=s > maxConnections
             if slot.accepts(self.source):
                 # Plug reconnection.
                 self.target = slot
@@ -3150,7 +3628,6 @@ class ConnectionItem(QtWidgets.QGraphicsPathItem):
                 self._remove()
                 
         else:
-
             if slot.accepts(self.target):
                 # Socket Reconnection
                 self.source = slot
@@ -3164,11 +3641,13 @@ class ConnectionItem(QtWidgets.QGraphicsPathItem):
                 self.updatePath()
             else:
                 self._remove()
-    
+            
     def _remove(self):
         """
          Remove this Connection from the scene.
         """
+        #class ConnectionItem func _remove
+        
         if self.source is not None:
             self.source.disconnect(self)
         if self.target is not None:
@@ -3176,22 +3655,14 @@ class ConnectionItem(QtWidgets.QGraphicsPathItem):
 
         scene = self.scene()
         scene.removeItem(self)
-        #12nov scene.update() is NOT a dict update
         scene.update()
 
     def updatePath(self):	
         """
             Update the path.
         """
+        #class ConnectionItem func updatePath
         
-        #22nov this class is ConnectionItem  so self is a ConnectionItem, wit cnxnSide and netname
-        
-        #25nov a ConnectionItem is a list pair in SaveMe 
-        #  the pair has a sourceNode sourceAttr   which is a Node with a Plug
-        #           and a targetNode targetAttr   which is a Node with a Socket
-        
-        #12nov the bez text is fuzzy
-        #   tried some web ideas to make netname more legible---none worked
         self.setPen(self._pen)
         
         path = QtGui.QPainterPath()
@@ -3199,14 +3670,18 @@ class ConnectionItem(QtWidgets.QGraphicsPathItem):
         
                 
         if( isinstance(self.source , PlugItem)):
-            
+
+            #14jan dx clc is chgd by TJP, 
+            #  code senses if begx = end x (vert) 
+            #   and bows outward from node if so
+            # dy,ctrl1 ctrl2 are as orig
             dx = (self.target_point.x() - self.source_point.x()) * 0.5
             
             #25nov i had some nets that were between 2 vertically stacjed nodes
             # and made some code to 'bend' the bez away from the node boundary
             # and i think a larger 'standoff' value is easier to interpret ( was 50 now 100 )
-	    #18dec i saw no bend for loopback on left side of ioControlNN
-	    #  and chg from 3 to 10 'fixed' it
+            #18dec i saw no bend for loopback on left side of ioControlNN
+            #  and chg from 3 to 10 'fixed' it
             if(self.source.cnxnSide == 'left'):
                 if(( dx < 10) and (dx > -10)):
                     dx = -100
@@ -3214,21 +3689,18 @@ class ConnectionItem(QtWidgets.QGraphicsPathItem):
                 if(( dx < 10) and (dx > -10)):
                     dx = 100
             
-            #22nov i dont see Y getting probs when dy = 0
-            # (maybe later)
             dy = self.target_point.y() - self.source_point.y()
             ctrl1 = QtCore.QPointF(self.source_point.x() + dx, self.source_point.y() + dy * 0)
             ctrl2 = QtCore.QPointF(self.source_point.x() + dx, self.source_point.y() + dy * 1)
             path.cubicTo(ctrl1, ctrl2, self.target_point)
 
-            #25nov make text on bezier left justified on cnxnSide == 'right'
-            #           an  right justified on cnxnSide == left
+            #25nov added text on bezier, uses netname
+            #  is justified towards plug end
             if(self.source.cnxnSide == "right"):
                 percent = 0.2
             else:
                 percent = 0.35
             txtloc = path.pointAtPercent(percent)
-            
             path.addText(txtloc,QtGui.QFont('monospace',10), self.netname)
         
             self.setPath(path)

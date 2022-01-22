@@ -1,196 +1,104 @@
-#10jan2022 found bug in F focus
-# when no items selectedm action was supposed to focus on ALL
-# my testing was done by manually selecting all (ctrl shift met l l=clk in space)
-# and then typing F
-# nononono the litany is   dbl clk in space ( insures nobody selected)
-# then F
-# i got error for var used before assign value
-# to fix i assigne slef.screnRect() to the area var
+#22jan2022 1537 stop on the L S rect stuff
+# go work on Convert halcmdshowpon  to json
 #
-#09jan2022 2348
-# i chgd to cnxnSide , and edited hal2json so it knew to use cnxnSide also
-# i t testes and found grid screwed up becuz renum cnum were not ints 
-# fixed the grid problem
-# loaded the grid ratsnest and wheni tried to edit cnxnside or index into stack
-# i got a blanl scite page...
-#  the filename was hardcoded as 'SaveMe'  no path, not fqfn
-# so i chcgd from loadinf 'SaveMe' to loading 'workingFile'
-# worked  ( so far )
-# enuf for today  midnoght
+#22jan cntd look at why F doesnt fit selected nodes into a window that 'just' envelopes those nodes
+# 1) the action of manually selecting (^shiftMetaLeftPress in space)
+#  all then F(ocus) does NOT work always
+# 2) the action od deselectall ( l clk in space )
+#  then F does NOT work ( code sez if none selected then select all then Focus)
+#am i printing the rect of slected or the rect the nodes will be placed into?
+#slot on_nodeSelected 
+# a new run, load, then F   is FIT and topleft test rect dragged shows ~0 ~-150
+#   NOT on all saved scenes!  usually not :-(
 #
-#09jan2022 scaling up down ng,,, soemtimes goes wring direction
-#  exampe press + 7 time, press - 7 times repeat, watch screen
+# beware QrectF is x,y,width,height  NOLT x1,y1,x2,y2
+#  this can be seen with any tiny rect, last 2 nums are tiny, 1st 2 depend on loc
 #
-#09jan2022 chg dflt soom incr from 1.15 to 1.1  was 1.03 orig, so now in between-ish
+# the initial load goes into world defined by cfg file ( 0,0,3800,2000 )
+# so any element in neg space ( neg X for xmpl ) are not seen ( they are off-screen )
+# i think author never expected ned positions
+# --- if some nodes are neg x, then lasso all, then F, then some nodes ar eoff screen 
+#  --   i must drag whole scene so no nodes are neg
+#  --   AND all must fit inside cfg files width/height
+# --- manual sel all F is better than auto sel all F
+#
+# i think a good idea to justify all ( move to positive x and y )
+#   i had a file x.json where all were pos, but min was > 1000
+#   so i made y.json subrtacting 1000 from evert x position
+#    with y.json ... L then F worked 
+#    ( had extra space on rt  becuz cfg had 5700 width
+#      max x posn was 4381... so 4381+200widgetwidth+100bendybezier=4681
+#      so try 4681 in cfg file
+#      yes that workls but very much mashed up onto left edge
+# Can i begin by making all pos?
+#  key P positive... using ... file or dict?
 # 
-#09jan2022 i got fesls for save and load
-# and i can use that to save 'views'
-# TODO    LOTS of cleanup
-# some organization is on user's responsibility
-# creating workingfolders is good idea
-# and inside the working folder could be a views folder
+# i think a good idea to save width height in json file NOT in cfg file
 #
-# TODO when saved the zoom factor at save time is not reinstated
-#   instead, the last zoom factor is applied
-#   also the location is left shifted ( at least left , maybe up/down too )
-# 
-#   the file saved has no place for viewctr or view scale (yet)
-#   i dunno where 0,0 is really, i THINK its top left of scene
-#   i THINK all coord are in the X+ Y+ quadrant  which is quadrant 4 of normal maths, but acts like quadrant 1 ( Y+ goes down, go figger!)
-#   
-#  if i add a section ZOOM to SaveMe, are there any tools already fro translation and scaling?
+#21jan 
+# re:  the saved view is not what was active when Save issued
+#  it is at least left shifted
 #
-#09jan2022
-# DONE saved views vs enter/exit hierarchical sheets
+#i need to look at the rect used 'itemsarea'
+# i think i need to see the x y posn
+# so i can compare 'items area to what i see on screen
+# myabe begin with top left  of itemmarea and 
+# be able to meta rt clk get xy posn of mouse
 #
-# ctrl shift meta l press selects all
+# if i carefully adjust whole graph so it saves and loads (with sleAll Focus)
+#  then i see the rect is...  near 400 right shifted of 0
+#  while leftmost node is at left edge ( where i thought 0 would be )
+#  bit where i expect 0 is really 371!
+#  NB: i also have cfg.jso chgd to width4000 ( was 2000)
+#  hmmm retired at width2000 and scene was WAY right shifted  huge blank area to left
+#('itemsArea is ', PyQt5.QtCore.QRectF(371.0, 308.0, 3594.0, 1254.0))
 #
-#  i still dont understand signals and slots  enuf
+# at width 4000 or gretaer (tested up to 5000) the leftmst node is left edge
+#  AND rightmodt is right edge, so > 4000 not usedfull
+#  and <4000 moves all nodes towards right, leaving empty space on left
 #
-#05jan2022 the system is near done for 2 of 3 stages
-# 1)read and parse file from halcmd show pin  
-#    into dicts and lists
-#    into format used bu Nodz (json CONNECTIONS and NODES)
-# 2)load json into Nodz and render the graph
-#    DONE space out the nodes when created
-#    use a grid of 400x600 and 2x2,3x3,4x4 grid accordung to numNodes
-#    BUG there is a prblem when position is 0,0, the node ends up ctrd in scene
-#     not at 0,0, as workaround i set 0,0 to 1,1
-#    i think err is in createNode in 'if not position"
-#     because that code puts node in scene center
-#    i think that logic fails when valid posn is 0,0
-# DONE there were some pin sources missing in the hal file
-# i think way back at .hal ( further than  halcndShowSig file level )
-#  yes 2 src missing for randomGV
-#  the thresholds are pins, why not in show sig?
-#  well they have no sig they have pins and are inputs
-# look at hal src, nowhere in hal or hal2
-# IS in M196
-#halcmd setp randomGV.GvHiThreshold $1
-#halcmd setp randomGV.GvLoThreshold $2
-# so maybe cnx the pin to a signal... 
-#   maybe that will create the dummy source node(s)
-# linksps ??  or net  s  p
-# YES in hal/hal2  use net from pin to signal
-#   signal goes NOWHERE but hal2graph sees that and creates a node
-#   same idea works for ouput signls w/o destination obj
-#    just add a signal to the outpin and hal2graph will create a dest node
-# these autogenerated nodes use signalnameSOURCE or signalnameDEST as nodename
-# 3) TODO save the file as .hal
-# 
-#05jan2020
-# de-select all:  l press in space (dbl clk not necc but works )
-# select all   :  ctrl shift meta l l press in space
-# select group :  shift l press (or ctrl shift l press) & drag over grou[p
-# deselect 1 node from group: shift l press on node until its border dims ( deselected)
-# add 1 item to group: shift l press on node untill its border hilites (becomes selected)
-# i achieved this by banging the code--- i need to understand the flow
-#  which has to do with several states that are set up
-# during say a double clk
-# a dbl clk is actually a press, a release, a pressm another release
-# and during those events the keyboard modifier may have occured
-# shift control meta modifiers work  ALT DOES NOT WORK AS MODIFIER ?? xfce? dunno could not chg ALT reaction of xfce4 settings
+# why 4000?   becuz actual itemArea is ~3600 plus inherent 400 error?
+#  so its some way other value for other graphs?
 #
-#04jan 1519 its VERY HARD to cnx a bez to a plug
-# DOH i was on a socket
-# its easy to drag from a plug, go inside node a bit , say 2mm
-# you should see the bex test pop out the side right away
-# (if over a plug and not a socket doofus!)
-# doh   i was on a socket   some viz indicator is good
+# theres something with visible...
+# if some nodes off screen, and i select all and focus
+#   then all is not seen
+# if all is visible on screen, say really small up and left on screen
+#   then slecte all, focus  will zoom to all
 #
-# EDITING NODE using SCITE 
-# 09jan2022 FIXED call is clean now and a single wndo opens w scite
-#  and a single wndo needs to be closed/exited
+#if i am close to ctr and zoomed WAY in,
+# (like zoomed in till theres only grey space on screen )
+# then ^shiftMetaLeftClkInSpace selectall, Focus works
 #
-# TIP when chging order of pins, 
-#  in the editor, just grab the INSIDES of the { ... }
-# and move that,  this avoid  cleaning up the }.
-# so far all editing is pin posn in stack and cnxnSide
-# but alternate will happen too
+# if not on screne ctr, but on some node ctr zoomed way in ( but can clk on space)
+# then selectAll Focus 'works', the zoomed view is ALL but ctrd on clk spot
+#  not all nodes are seen
+#20jan 2300  
+# idea: the views... 
+#  if i had a list of the components in the view
+#  and the unzoomed layout was 'pleasant'
+# then i select the nodes in the list
+#   and do a F(ocus) command
+# well its a good idea, but Focus deosnt work well
+#  same general problem as zoom and pan
 #
-#TODO spcl to ctr focus at click
+#15jan 10am i saw that ctrl shift l press on node ( near ShowMe)
+# was no reliable in getting scite o open SaveMe file from startup
+# now Noon it seems to always work !?!?
 #
-# TODO:
-#  zoom and pan are not nice
-#  its hard to get at some parts of dwg
-#  and if not zoomed in enuf, its easy to accidental clk & delete a net
-# TIP: to avoid accidentaly removong nets
-#   zoom way out to see all
-#   lasoo all
-#   zoom IN before grabbing the group
-#   then its easy to NOT erase a net, and to move the group
-#   re-position the group so the area of interest is central
-#   then zoom in to work
-# 09jan2022 TODO
-# the accidental net removal could be handle by avoiding
-#  the action needed to delete the net
-#  if a special modifier combo was required
-#  then the accidents will decrease 
+#14jan almost done restoring and cleaning
+#  after that get the editing func back ?? ctrl l dblclk on node??
+#14jan reduce comments, try to better understand signals and slots
+# 14jan i restored all orig slots and .connects
+#       in case i trampled on something handy
 #
-# TODO testing:  test other poeples suites
-# i can brows other lcnc cfg suites 
-#   and run halcmd show sig > blahShowPins
-#   then look at graphs ( run parseHal , run nodz_demo)
+#14jan ctrl shift l clk on a node 
+#  will toggle teh node's select state
+#  not clean! sometime takes 2 ctl shift l clk before node outline goes orange
+#  also the node will become sel'd but wont de-sel w further ctl shift l press-es
+#   ( node toggles on but wont not off )
 #
-#09jan TODO
-#   if i open a 3rd wndow ( 2popups from main wndo) 
-#    the 1st popup wndo dissappears
-#    can i get more than 1 child window?
-#
-# TODO default viewers in cfg file
-#  like others may not use ffox or scite or have spcl svg viewer
-#
-#16dec
-# DONE make the subgraph for arduino subsystem (filename test2) (file test3 no longer used)
-#
-#14dec hover popups works well\
-# also fund out the parents of classes
-# ---class----------------parent--------
-# ,-Nodz		QtWidgets.QGraphicsView 
-# |   NodeScene		cant clk on it theres nothing to clk on
-# |-background		Nodz
-# |-NodeItem		NodeItem & Nodz
-# | ,-SlotItem------,	no response when clk on the horiz area i think is slot
-# | |-PlugItem------|	SlotItem PlugItem
-# | `-SocketItem-,  |	SlotItem & SocketItem
-# |    on DOT----`--`	SlotItem &(PlugIten or SktItem) depending on dot
-# `-ConnectionItem	Nodz & CnxnItem
-#
-#05dec2021
-#while walking 'boots' the chihuahua, i had a vision
-# and i mean vision becuz i see an image in my mind, not words or some linear thog=ught process
-# iwas surprised to know that my thought process was basically visual
-#
-# anyway the image was of somecode on the screen'
-# and it was about a class and was a response to an evene
-# there were mayby of these in the real code
-#so my image.thought was, thats the way to see how to get the hiddenthisnode.alternate info
-# becuz i remembered that some classes had such code
-# so now go look for such
-#
-# it looks like in nodz_main class NodeItem mouseDoubleClickEvent
-#
-#03dec2021 i had an imagining, that if i clicked on a widget
-# that was a 'meta'widget' ( a comination of several widgets with just the i/o exposed)
-# i imagined the meta widget would simply load a different file and render it 
-# this new file would be the digraph of the metawidget, in simple widgets
-# 
-# TODO collect the TODOs scattered thry code and put here
-#
-#
-#TODO  different colors for diff dataType pins, maybe nets too
-#
-#
-#   RULE: ALWAYS set socketMaxConnections to 1 ( no more than 1 )
-#   RULE always set plugMaxConnections to -1 ( infinite_
-
-# There is a file describing the scene
-#  the file has 2 parts ,  Nodez  and Connections
-#  Connections is a list of pairs of slots/pins
-#  Nodes is a multi level dictionary with an entry for each widget/compe/node
-#   each Node has a list of pins/slots
-#     each slot/pin has a dict of properties 'attributes'
-
+#14jan orig import from Qt , i use from PyQt5
 from PyQt5 import QtCore, QtWidgets
 import nodz_main
 
@@ -212,69 +120,119 @@ QtCore.Property = QtCore.pyqtProperty
 ######################################################################
 # Test signals
 ######################################################################
+#-------------15jan begin restore slots for nodes
+#15jan chg all slot prints to identify better what did the print
+@QtCore.Slot(str)
+def on_nodeCreated(nodeName):
+    print('slot on_nodeCreated : ', nodeName)
 
-#08jan2022  this weird @thing
-# this is how the Slot s are defined  ( real qt slots )
-# in some other place, a signal will be created 
-#  and in yet anpthe place, the signal will be emit-ed
-#  and the signal will need to be connected to the slot
+@QtCore.Slot(str)
+def on_nodeDeleted(nodeName):
+    print('slot on_nodeDeleted : ', nodeName)
+
+@QtCore.Slot(str, str)
+def on_nodeEdited(nodeName, newName):
+    print('slot on_nodeEdited : {0}, new name : {1}'.format(nodeName, newName))
 
 @QtCore.Slot(str)
 def on_nodeSelected(nodesName):
-    #print('node selected : ', nodesName)
-    #09jan2022  why did i cut off nodesName?
-    print('node selected')
+    a=1
+    # 22jan2022 dummied up to reduce visual clutter
+    #print('slot on_nodeSelected : ', nodesName)
 
-#08jan try to make a new SLOT 
-#  it will need a signal and the signal need to be emit-ed
-#  and the signal and slot will need to be connected
-#09jan2022 TODO i dont see these texts printed in console
-@QtCore.Slot(str)
-def on_plugSelected(plugName):
-    print('plug selected : ', plugName)
-    #08jan vvv no effect  no print
-    sender = self.sender()
-    print("sender is ", sender.text())
+@QtCore.Slot(str, object)
+def on_nodeMoved(nodeName, nodePos):
+    print('slot on_nodeMoved  {0} moved to {1}'.format(nodeName, nodePos))
 
-#04jan2022 i do NOT get this msg printed to console when i dbl clk a node
-# but i DO get the ShowMe action ( nothing in console tho)#
-#09jan2022 this doesnt print, i dont have signal,slot,connect setup correct
 @QtCore.Slot(str)
 def on_nodeDoubleClick(nodeName):
-    print('double click on node : {0}'.format(nodeName))
+    print('slot on_nodeDoubleClick on node : {0}'.format(nodeName))
+#-------------15jan end restore slots for nodes
 
+#-------------15jan beg restore slots for attrs ( all were missing)
 # Attrs
+@QtCore.Slot(str, int)
+def on_attrCreated(nodeName, attrId):
+    #22jan2022 reduce clutter
+    a=1
+    #print('slot on_attrCreated : {0} at index : {1}'.format(nodeName, attrId))
 
-# Connections
+@QtCore.Slot(str, int)
+def on_attrDeleted(nodeName, attrId):
+    print('slot on_attrDeleted : {0} at old index : {1}'.format(nodeName, attrId))
 
+@QtCore.Slot(str, int, int)
+def on_attrEdited(nodeName, oldId, newId):
+    print('slot on_attrEdited : {0} at old index : {1}, new index : {2}'.format(nodeName, oldId, newId))
+    
+#-------------15jan end restore slots for attrs
+
+#-------------15jan beg restore slots for cnxns
+@QtCore.Slot(str, str, str, str)
 def on_connected(srcNodeName, srcPlugName, destNodeName, dstSocketName):
-    #09jan2022 harmless , likely doesnt print anyways
-    # originally neutered to reduce clutter in console
-    #09jan2022 there's a LOT of clutter removed
-    # maybe be a good idea to reinstate, they show signals making iot thru system
-    # a 'ifdef' type enable / debug level  could be coded
-    print('in on_connected  connected src: "{0}" at "{1}" to dst: "{2}" at "{3}"'.format(srcNodeName, srcPlugName, destNodeName, dstSocketName))
+    #22jan2022 reduce clutter
+    a=1
+    #print('slot on_connected src: "{0}" at "{1}" to dst: "{2}" at "{3}"'.format(srcNodeName, srcPlugName, destNodeName, dstSocketName))
 
 @QtCore.Slot(str, str, str, str)
 def on_disconnected(srcNodeName, srcPlugName, destNodeName, dstSocketName):
-    print('disconnected src: "{0}" at "{1}" from dst: "{2}" at "{3}"'.format(srcNodeName, srcPlugName, destNodeName, dstSocketName))
+    print('slot on_disconnected src: "{0}" at "{1}" from dst: "{2}" at "{3}"'.format(srcNodeName, srcPlugName, destNodeName, dstSocketName))
+#-------------15jan beg restore slots for cnxns
 
+#-------------15jan beg restore slots for graph
 # Graph
+@QtCore.Slot()
+def on_graphSaved():
+    print('slot on_graphSaved !')
 
+@QtCore.Slot()
+def on_graphLoaded():
+    print('slot on_graphLoaded !')
+
+@QtCore.Slot()
+def on_graphCleared():
+    print('slot on_graphCleared !')
+
+@QtCore.Slot()
+def on_graphEvaluated():
+    print('slot on_graphEvaluated !')
+    
+#-------------15jan end restore slots for graph
+
+#-------------15jan end restore slots for other
 # Other
 @QtCore.Slot(object)
 def on_keyPressed(key):
-    print('key pressed : ', key)
+    print('slot on_keyPressed : ', key)
+    
+#-------------15jan end restore slots for other
+
 
 #04jan2022 these vvv connect SIGNAL to SLOT ( SLOTS ar ethe @Qtblah things above)
+#14jan restore all old .connect s----------------------beg
+nodz.signal_NodeCreated.connect(on_nodeCreated)
+nodz.signal_NodeDeleted.connect(on_nodeDeleted)
+nodz.signal_NodeEdited.connect(on_nodeEdited)
+nodz.signal_NodeSelected.connect(on_nodeSelected)
+nodz.signal_NodeMoved.connect(on_nodeMoved)
+nodz.signal_NodeDoubleClicked.connect(on_nodeDoubleClick)
+
+nodz.signal_AttrCreated.connect(on_attrCreated)
+nodz.signal_AttrDeleted.connect(on_attrDeleted)
+nodz.signal_AttrEdited.connect(on_attrEdited)
+
 nodz.signal_PlugConnected.connect(on_connected)
 nodz.signal_SocketConnected.connect(on_connected)
-nodz.signal_NodeSelected.connect(on_nodeSelected)
-nodz.signal_NodeDoubleClicked.connect(on_nodeDoubleClick)
+nodz.signal_PlugDisconnected.connect(on_disconnected)
 nodz.signal_SocketDisconnected.connect(on_disconnected)
+
+nodz.signal_GraphSaved.connect(on_graphSaved)
+nodz.signal_GraphLoaded.connect(on_graphLoaded)
+nodz.signal_GraphCleared.connect(on_graphCleared)
+nodz.signal_GraphEvaluated.connect(on_graphEvaluated)
+
 nodz.signal_KeyPressed.connect(on_keyPressed)
-#08jan try to make a new sgl
-nodz.signal_PlugSelected.connect(on_plugSelected)
+#14jan restore all old .connect s----------------------end
 
 ######################################################################
 # Test API
