@@ -1,13 +1,25 @@
-#22jan2022 1537 stop on the L S rect stuff
-# go work on Convert halcmdshowpon  to json
+#24jan2022
+# YAY now using RTPRESS will del net so normal dragging zoomed out is ok
+# normal LFPRESS will NOT del nets
+# chg made in class ConnectionItem func mouseReleaseEvent
+# ...
+#       #24jan make action conditional with button() == 2 (rt btn)
+#	if(event.button() == QtCore.Qt.RightButton):
+#...
+#24jan also had to rem out whole bottom of code
+#   class ConnectionItem func mousePressEvent
+#  else  ANY btn press would delete a net
+#  i think safe to have just 1 event path from deleting a net
+#  now (24jan2022) rtbtn press on net == delete
+#  TODO CLEANUP
 #
 #22jan cntd look at why F doesnt fit selected nodes into a window that 'just' envelopes those nodes
 # 1) the action of manually selecting (^shiftMetaLeftPress in space)
 #  all then F(ocus) does NOT work always
 # 2) the action od deselectall ( l clk in space )
 #  then F does NOT work ( code sez if none selected then select all then Focus)
-#am i printing the rect of slected or the rect the nodes will be placed into?
-#slot on_nodeSelected 
+# am i printing the rect of slected or the rect the nodes will be placed into?
+# slot on_nodeSelected 
 # a new run, load, then F   is FIT and topleft test rect dragged shows ~0 ~-150
 #   NOT on all saved scenes!  usually not :-(
 #

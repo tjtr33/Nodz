@@ -550,6 +550,7 @@ class Nodz(QtWidgets.QGraphicsView):
     #end -----class Nodz func mousePressEvenet
 
     def mouseMoveEvent(self, event):
+	#class Nodz  func  mouseMoveEvent
         """
          Update tablet zoom, canvas dragging and selection.
         """
@@ -582,7 +583,7 @@ class Nodz(QtWidgets.QGraphicsView):
 	# remove that stanza off top of pinball
 	
 	#22jan2022 dbug
-	print("in mouseRelease state is ",self.currentState)
+	print("class Nodz func mouseRelease state is ",self.currentState)
 	if self.currentState == 'SELECTION':
             # if state == SELECTION then mouseReleas will choose ALL
             #05jan2022 why was i in SELECTION state? 
@@ -599,13 +600,14 @@ class Nodz(QtWidgets.QGraphicsView):
 	    #22jan2022 this vvv does NOT print when i drag a ghost rect over alll nodes
 	    #22jan i thought i'd be in this part of if/elif but NO, in next!
 	    #  actually in ADD_SELECTION
-	    print("in mouseRelease itemsBoundingRect ",self.scene().itemsBoundingRect().x(),self.scene().itemsBoundingRect().y(),self.scene().itemsBoundingRect().width(),self.scene().itemsBoundingRect().height())
+	    print("class Nodz func mouseRelease state SELECTION itemsBoundingRect ",self.scene().itemsBoundingRect().x(),self.scene().itemsBoundingRect().y(),self.scene().itemsBoundingRect().width(),self.scene().itemsBoundingRect().height())
             self.scene().setSelectionArea(ppath)
 
         elif self.currentState == 'ADD_SELECTION':
 	    #22jan2022 this is where i am when i drag a ghost rect over any
 	    # this code iterates over all nodes
             # 27nov  add selection means add to selected list
+	    print("class Nodz func mouseRelease state ADD_SELECTION ")
             self.rubberband.setGeometry(QtCore.QRect(self.origin,
                                                      event.pos()).normalized())
             painterPath = self._releaseRubberband()
@@ -614,6 +616,7 @@ class Nodz(QtWidgets.QGraphicsView):
                 item.setSelected(True)
 
         elif self.currentState == 'SUBTRACT_SELECTION':
+	    print("class Nodz func mouseRelease state SUBTRACT_SELECTION ")
             # 27nov what does subtract mean? delete? i think de-selected
             self.rubberband.setGeometry(QtCore.QRect(self.origin,
                                                      event.pos()).normalized())
@@ -623,6 +626,7 @@ class Nodz(QtWidgets.QGraphicsView):
                 item.setSelected(False)
 
         elif self.currentState == 'TOGGLE_SELECTION':
+	    print("class Nodz func mouseRelease state TOGGLE_SELECTION ")
             # 27nov what does toggle mean? i think toggle selected-ness
             self.rubberband.setGeometry(QtCore.QRect(self.origin, event.pos()).normalized())
             painterPath = self._releaseRubberband()
@@ -634,7 +638,10 @@ class Nodz(QtWidgets.QGraphicsView):
                     item.setSelected(True)
 
         self.currentState = 'DEFAULT'
-
+        #23jan what happens to l clk net deletion if next remm'd ?
+	#  still  l clk dels net   try rem both, 
+	#  ng , begins to trim the net and eventually can blow up
+        print("class Nodz func mouseRelease exit") 	
         super(Nodz, self).mouseReleaseEvent(event)
      
     def keyPressEvent(self, event):
@@ -2886,6 +2893,7 @@ class SlotItem(QtWidgets.QGraphicsItem):
 
     def mouseReleaseEvent(self, event):
         # class SlotItem method mouseRelease
+	
         # 23nov a slot has a single cnxnSide
         # yet this code makes a cnxn, which rwrs 2 cnxnSides, 2 slotItems, (1 plugItem 1 SocketItem)
         # the 2 cnxnSides are available IF the self is one slotItem 
@@ -3465,7 +3473,27 @@ class ConnectionItem(QtWidgets.QGraphicsPathItem):
                 "{0}.{1}".format(self.socketNode, self.socketAttr))
         
     def mousePressEvent(self, event):
-        #class ConnectionItem func mousePressEvent
+	#class ConnectionItem func mousePressEvent
+	#24jan rem'd a chink at bottom to clean up using rtclk to del net
+	# before remming EITHER a rt press OR any press would del a net
+	# this is important becuz, 
+	# when zoomed way out, 
+	#  and you want to lasso or drag something
+	# you would use l btn drag
+	# BUT if you accidently press o a net ( very hard to tell when zoomed out)
+	# then you would inadvertantly delete that net
+	# happened to me a LOT
+	
+	
+        """
+         Snap the Connection to the mouse.
+         
+         TJP what doe sthis func do?
+         what is source and target
+        """
+	#24jan  rtclk del net is ok(deleted)  lfclk net is ok ( nada)
+	
+        
 
         # this is what is done when a mouse press happens on a cnxn
         # i want a left ctrl press  to delete it
@@ -3479,41 +3507,12 @@ class ConnectionItem(QtWidgets.QGraphicsPathItem):
         #AttributeError: 'NoneType' object has no attribute 'disconnect'
 
         print("classCnxnItem mousePress")
-        """
-        # print skt and plug info
-        # self is a cnxnItem
-        strg1="cnxn item socketNode ="
-        strg2=self.socketNode
-        strg3=strg1+strg2
-        print(strg3)
-        strg1="cnxn item socketAttr ="
-        strg2=str(self.socketAttr)
-        strg3=strg1+strg2
-        print(strg3)
-        strg1="cnxn item plugNode ="
-        strg2=self.plugNode
-        strg3=strg1+strg2
-        print(strg3)
-        strg1="cnxn item plugAttr ="
-        strg2=str(self.plugAttr)
-        strg3=strg1+strg2
-        print(strg3)
-        """
-        #13jan blows up after these prints... with a plain l press on a node
-    
-        """
-         Snap the Connection to the mouse.
-         
-         TJP what doe sthis func do?
-         what is source and target
-        """
-    
+	
         # idea:  if event == left btn press
         #         and modifier == NoMod:
         #        then return...
         # no i think some damage already done , like half of cnxn already gone, just not shown on graph
         # what is normal way to delete a cnxn?
-    
     
         # 13nov this looks like a handy universal way to get verything available to a func
         nodzInst = self.scene().views()[0]
@@ -3526,6 +3525,10 @@ class ConnectionItem(QtWidgets.QGraphicsPathItem):
         
         nodzInst.drawingConnection = True
         
+	#24jan2022 looking at accidental net deletion;
+	#  try remmin this code chink to see if it stops all net deletions
+        # looks good i can del net w rt press and still make new cnxns ( can drag bez)
+        """	
         if(hasattr(self.target,'disconnect')):
             
             #13jan this code can discnx the plug end or the skt end
@@ -3539,108 +3542,110 @@ class ConnectionItem(QtWidgets.QGraphicsPathItem):
             
             #   nodzInst.sourceSlot = self.source
             #   nodzInst.sourceSlot = self.target
-            
-            """            
-            # 13nov code here vvv is exec'd WHILE dragging the new bez cnxn
-            d_to_target = (event.pos() - self.target_point).manhattanLength()
-            d_to_source = (event.pos() - self.source_point).manhattanLength()
-            
-            if d_to_target < d_to_source:
-            
-                self.target_point = event.pos()
-                self.movable_point = 'target_point'
-                self.target.disconnect(self)
-                self.target = None
-                nodzInst.sourceSlot = self.source
-            else:
-                self.source_point = event.pos()
-                self.movable_point = 'source_point'
-                self.source.disconnect(self)
-                
-                self.source = None
-                nodzInst.sourceSlot = self.target
-            """    
+        """
+	
         self.updatePath()
             
     def mouseMoveEvent(self, event):
         #class ConnectionItem func mouseMveEvent
+	#23jan test  
+	#  if this func NOT rtnd early, 
+	#  and mouseReleaseEvent (next) is NOT rtnd early
+	#  then i CAN get trim to happen (dangling noodle)
+	#
+	#  if this func RTND EARLY and next NOT RTND EARLY
+	#  then i CANNOT get trim to happen
+	#
+	#  if next func IS RTND EARLY
+	#  and this func is NOT RTND early
+	#  then i CAN get trim to happen
+	#
+	#  if next IS NOT RTND EARLY
+	#  and this IS NOT RTND EARLY
+	#  then i CAN get trim to happen
+	return 
         """
            Move the Connection with the mouse.
         """
+	#23jan --------begin dbug   
+	print("class cnxnItem func mouseMoveEvent any event")
+	#23jan event.button is always 0, and i have t o drag to get it
+	#  i never get a 1 or 2 ( left maus btn   right maus btn 
+	#print(event.button())
+	# this gets me 155  GraphicsSceneMouseMove   print(event.type())
 
-        #if (event.button() == QtCore.Qt.RightButton):
-
+        #23jan the event is NOT a mouse btn press	
+	# so there wont be a left middle right btn pressed at all
+	#if event.type() == QtCore.QEvent.MouseButtonPress:
+	if event.type() == QtCore.QEvent.GraphicsSceneMouseMove:
+	    print("event type was GraphicsSceneMouseMove")
+	    #23jan event.button is always 0 (NoButton)
+	    print(event.button())
+        #23jan ------end dbug
+	
+	
 	nodzInst = self.scene().views()[0]
 	config = nodzInst.config
-
 	mbb = utils._createPointerBoundingBox(pointerPos=event.scenePos().toPoint(),
                                               bbSize=config['mouse_bounding_box'])
-
 	# Get nodes in mouse pointer's bounding box.
         targets = self.scene().items(mbb)
-
         if any(isinstance(target, NodeItem) for target in targets):
-
             if nodzInst.sourceSlot.parentItem() not in targets:
                 for target in targets:
                     if isinstance(target, NodeItem):
                         nodzInst.currentHoveredNode = target
         else:
             nodzInst.currentHoveredNode = None
-
         if self.movable_point == 'target_point':
             self.target_point = event.pos()
         else:
             self.source_point = event.pos()
-
         self.updatePath()
     
     def mouseReleaseEvent(self, event):
+        #class ConnectionItem func mouseReleaseEvent
+	#24jan make action conditional with button() == 2 (rt btn)
+	#  now rtPress dels net leftPress does nothing 
         """
          Create a Connection if possible, otherwise delete it.
-        """	
-        #class ConnectionItem func mouseReleaseEvent
-    
-        nodzInst = self.scene().views()[0]
-        nodzInst.drawingConnection = False
-
-        slot = self.scene().itemAt(event.scenePos().toPoint(), QtGui.QTransform())
-
-        if not isinstance(slot, SlotItem):
-            self._remove()
-            self.updatePath()
-            super(ConnectionItem, self).mouseReleaseEvent(event)
-            return
-                    
-        if self.movable_point == 'target_point':
-            if slot.accepts(self.source):
-                # Plug reconnection.
-                self.target = slot
-                self.target_point = slot.center()
-                plug = self.source
-                socket = self.target
-
-                # Reconnect.
-                socket.connect(plug, self)
-
-                self.updatePath()
-            else:
+        """
+	#24jan vvv is printed now, report 1 ( leftbtn )
+        print("class cnxnItem func mouseReleaseEvent  mouse btn was ", event.button())
+	#24jan make action conditional with button() == 2 (rt btn)
+	if(event.button() == QtCore.Qt.RightButton):
+            nodzInst = self.scene().views()[0]
+            nodzInst.drawingConnection = False
+            slot = self.scene().itemAt(event.scenePos().toPoint(), QtGui.QTransform())
+            if not isinstance(slot, SlotItem):
                 self._remove()
-                
-        else:
-            if slot.accepts(self.target):
-                # Socket Reconnection
-                self.source = slot
-                self.source_point = slot.center()
-                socket = self.target
-                plug = self.source
-                
-                # Reconnect.
-                plug.connect(socket, self)
-                
                 self.updatePath()
+                super(ConnectionItem, self).mouseReleaseEvent(event)
+                return
+            if self.movable_point == 'target_point':
+                if slot.accepts(self.source):
+                    # Plug reconnection.
+                    self.target = slot
+                    self.target_point = slot.center()
+                    plug = self.source
+                    socket = self.target
+                    # Reconnect.
+                    socket.connect(plug, self)
+                    self.updatePath()
+                else:
+                    self._remove()
             else:
-                self._remove()
+                if slot.accepts(self.target):
+                    # Socket Reconnection
+                    self.source = slot
+                    self.source_point = slot.center()
+                    socket = self.target
+                    plug = self.source
+                    # Reconnect.
+                    plug.connect(socket, self)
+                    self.updatePath()
+                else:
+                    self._remove()
             
     def _remove(self):
         """
