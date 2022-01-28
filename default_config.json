@@ -22,16 +22,16 @@
     "node_attr_height": 30,
     "connection_width": 2,
 
-    // Default colors > Edit values BUT do not delete.
+    // Default colors > Edit values BUT do not delete. bg was 40 40 40 255 grid was 50 50 50  cnxn was 0,100,0
     "alternate_value": 20,
-    "bg_color": [40, 40,40, 255],
-    "grid_color": [50, 50, 50, 255],
+    "bg_color": [150, 150, 200, 255],
+    "grid_color": [100, 100, 100, 255],
     "slot_border": [50, 50, 50, 255],
     "non_connectable_color": [100, 100, 100, 255],
     // 12nov was "connection_color": [255, 155, 0, 255],
     // this color is all connection, the bezier and text
     // green is ok  but text is fuzzy   node text is not
-    "connection_color": [0,100,0, 255],
+    "connection_color": [150,0,0, 255],
     "node_default": {
         "bg": [130, 130, 130, 255],
         "border": [50, 50, 50, 255],

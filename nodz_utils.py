@@ -40,7 +40,7 @@ def _convertDataToColor(data=None, alternate=False, av=20):
     # rgb
     if len(data) == 3:
         color = QtGui.QColor(data[0], data[1], data[2])
-	#03dec2021  this vvv could be rem-ed, i dont use it
+        #03dec2021  this vvv could be rem-ed, i dont use it
         #if alternate:
         #    mult = _generateAlternateColorMultiplier(color, av)
         #
@@ -51,13 +51,13 @@ def _convertDataToColor(data=None, alternate=False, av=20):
     # rgba
     elif len(data) == 4:
         color = QtGui.QColor(data[0], data[1], data[2], data[3])
-	#03dec2021 this vvv could be rem-ed, i dont use it
+        #03dec2021 this vvv could be rem-ed, i dont use it
         #if alternate:
         #    mult = _generateAlternateColorMultiplier(color, av)
         #    color = QtGui.QColor(max(0, data[0]-(av*mult)), max(0, data[1]-(av*mult)), max(0, data[2]-(av*mult)), data[3])
-	#
-	#06dec what is format of 'color' ?
-	#06dec  printing got me an empty dict  '{}'
+        #
+        #06dec what is format of 'color' ?
+        #06dec  printing got me an empty dict  '{}'
 
         return color
 
@@ -67,7 +67,7 @@ def _convertDataToColor(data=None, alternate=False, av=20):
         print('Can only be [R, G, B] or [R, G, B, A]')
         print('Using default color !')
         color = QtGui.QColor(120, 120, 120)
-	#03dec2021 this vvv could be rem-ed, i dont use it
+        #03dec2021 this vvv could be rem-ed, i dont use it
         #if alternate:
         #    color = QtGui.QColor(120-av, 120-av, 120-av)
         return color

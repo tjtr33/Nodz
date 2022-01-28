@@ -1,3 +1,49 @@
+#28jan begin convert to python 3
+#  22:29  runs with  python3 nodzdemo.py
+#  just indents checked, no print errs seen
+#
+#27jan0202 tiny gap between bezier and left side of socket 'fixed'
+#  likely the calc of painterpath (bez bound box) is rt shifted this amount
+#
+# i made some halcmd shoe pin > compname.pins   files
+# thinking this was beginning of build graph from scratch
+# what doe sit take to load one ( a one comp graph w/o nets )
+# 
+#24jan2022 22:37 V(iew) from a list of node names works ok
+#  when nodes are jammed against top left, not so pretty
+#  may need to add a border value when saving/creating, else pretty good
+# TODO adda view file save, view file load
+#  how to save ? 
+# see this SO answer for using json in and out
+#https://stackoverflow.com/questions/27745500/how-to-save-a-list-to-a-file-and-read-it-as-a-list-type
+#  i tried in a terminal and worked well
+# saving should just save a list of quoted names ["fred","ethel","lucy", "ricky"]
+# loading should just read and set rect and focus on rect
+#  prelim dlog for "load or save" ??
+#  never did a dlog yet
+#TODO theres a bug in the selected area code,
+# one example fails ... gvLoThreshold, gv2offset13.0  
+#   fuzzy idea prob is cuz 2nd item is way above 1st, maybe subtract is ng here
+#   if all nodes in between are in list, then ok
+#   if i skip in between then ng
+#   IF user lassoos the area to view, then the problem doesnt show
+#
+#24jan2022 arrgh did i break hypermedia? 
+#  i can still get editor w ^shift left clk on node
+#  phew! ability still there, i hadnet edited in the hypermedia infos  for fname and datattype
+#  NB to get hypermedia  jut dnl clk on ShowMe
+#  NB to get editor  use ^ShiftLeftClick on node ( use the yellow bar else you clkd on a slot not node )
+#
+# TODO the saving of views
+#  should save just the node names to fill the screen
+#  not the whole scene pre-zoomed to those nodes
+#  so search selected...
+#   xmpl     for item in self.scene().items(painterPath):
+#                item.setSelected(True)
+#
+# ALSO
+#  after save all, the nets are disconnected until a node gets moved, even a tiny bit
+#  
 #24jan2022
 # YAY now using RTPRESS will del net so normal dragging zoomed out is ok
 # normal LFPRESS will NOT del nets
@@ -136,7 +182,9 @@ QtCore.Property = QtCore.pyqtProperty
 #15jan chg all slot prints to identify better what did the print
 @QtCore.Slot(str)
 def on_nodeCreated(nodeName):
-    print('slot on_nodeCreated : ', nodeName)
+    #24jan reduce clutter
+    a=1
+    #print('slot on_nodeCreated : ', nodeName)
 
 @QtCore.Slot(str)
 def on_nodeDeleted(nodeName):
