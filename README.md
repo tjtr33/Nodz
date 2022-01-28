@@ -5,25 +5,33 @@ Nods provides you with a very simple way to read your graph, it outputs connecti
 
 Nodz is partially customizable via a configuration file that let you change colors and the shape of nodes.
 
-EDIT: 10Jan2022 Tjtr33
-changes made for use with Linuxcnc Hal components ( like nodes )
-I am not a professional software developer. Apologies for not
-understanding the program as delivered, not understanding Python,
-and not understanding GIT.
+EDIT: 28Jan2022 tjtr33
+The original slot prints have been restored.
+Changes made for use with Linuxcnc Hal components ( like nodes )
+
 Please look at the 3 json files SaveMe01... SaveMe02... SaveMe03...
-run the app 'python nodz_demo.py' 
-( I use python 2.7 and will update code to 3 soon )
-Load these files to see how Nodz works with LinuxCNC informations.
+They show the progression of a graph from rats nest to legible visual explanation
+Try running the app 'python3 nodz_demo.py' 
+( I use python 3.7 now  28Jan2022 )
 
 The file creation flow:
 The LinuxCNC hal files are loaded into LinuxCNC.
 Then a command is issued to collect all the nodes and connections.
- halcmd show sig > mysystem.signals
+     halcmd show sig > mysystem.signals
 The file mysystem.signals is processed into json for Nodes.
 The tool to convert mysystem.signals into mysystem.json is
-not uploaded yet ( I suppose that will be a new git repo... )
+now included, use 'C' (fro convert) to load a .signal file
+and to save the .json file. The process is very fast on configs
+tested so far. Please upload your 'filename.signal' file for 
+testing. I dont have your hardware, so I cannot create the
+.signal files.
 
-For the meantime you can see and play with the supplied json files.
+I began using 'views' that were focussed viewports of the entire
+scene, but now am changing to simply save the node names selected
+by user. These nodes are selected and the bounding rect is calculated.
+That rect is 'focussed' , whhich creates the 'view'. This way only
+a few bytes are stored, rather than the entire database with a 
+scaling and viewport center.
 
 Enjoy, tjtr33
 
@@ -31,7 +39,7 @@ Enjoy, tjtr33
 
 
 ***If you find any errors/bugs/flaws or anything bad, feel free to let me know so I can fix it for the next persons that would like to download nodz.***
-EDIT: tjtr33 i suppose you can contact me thru github, i dunno 
+EDIT: tjtr33 you can contact me thru github
 
 ***PLEASE MAKE SURE TO CREATE 1 PULL REQUEST PER ISSUE ! THIS IS EASIER AND CLEANER TO PROCESS***
 
@@ -55,10 +63,10 @@ hover to discover object name and type<br>
 click on a bezier net to delete it<br>
 left mouse drag from a PLUG to a SOCKET<br>
 when a new bezier is dragged near acceptable sockets, they highlight<br>
-
-
-
-
+CtrlShiftMetaLeft Press in empty space selects all
+Single Left Press de-selects all
+Lassoo an area, then press F to zoom that subset
+ControlShiftLeftDoubleClick brings up a text editor
 
 ###
 ## Requirement
@@ -82,12 +90,26 @@ The following needs to be installed!
 ###
 ## Configuration file
 
-Nodz comes with a default [configuration file](default_config.json), it is specified what can be removed and what can't be.
-If this file stays in the default location, it is auto loaded BUT you still need to apply it to Nodz (look at [nodz_demo.py](nodz_demo.py) lines 5/6)
-Be careful when editing it, if you are missing a "**,**" it will error. So don't screw up. :smile:
+Nodz comes with a default [configuration file](default_config.json).
+This file is sort of 'css' or 'skins' for the app.
+The file to L(oad) can be selected from a file dialog.
+The file to S(ave) is selected from a file dialog also.
 
+Double clicking on 'ShowMe' raises the multimedia actions.
+The node cna have many types of inforamtion displayed,
+SVG, manpages, code, urls and more. These are enabled in the
+json describing the node, and are specified by the user.
 
+ControlShiftLeftDoubleClick brings up a text editor
+and that has the json file loaded. The user can make changes
+in the json file, and save it. The press L(oad) and choose that
+json file to see the changes you made.
 
+The file format of the json file is pretty simple, study one to
+see the order and format. Make simple changes and see the result.
+I am experimenting with a library of comps now, but the app is
+meant to explain existing configs, I dont have .hal file output
+in planning now(28jan2022)
 
 ###
 ## Features
@@ -102,7 +124,6 @@ nodz.gridSnapToggle = False
 ```
 del : delete the selected nodes
 f   : zoom focus on selected items, all the items if nothing is selected
-s   : snap the selected node on the grid
 
 ```
 
