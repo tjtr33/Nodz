@@ -1,49 +1,48 @@
-#28jan begin convert to python 3
+#30jan all files cleaned up ( old/bad comments removed)
+#  TODO logic cleanup
+#  TODO add save & load views
+#       L S are load save scene
+#       l s are load save view ( a list of nodes to zoom to )
+#30jan t get new json graph load to fill viewport...
+# load  fname
+# select all
+# focus
+# zooms and ctrs any graph
+# DONE
+# i didnt have to calc bounds , there's a cmd that does that
+#   itemsArea = self.scene().itemsBoundingRect()        
+#   self.fitInView(itemsArea, QtCore.Qt.KeepAspectRatio)
+# this rect is used instead of the default width height from defau;t_config.json
+#
+#29jan  FIXED (workaround) 
+# after save, the nets are not cnxd to nodes
+#  a tiny drag/move of a node will recnx all
+#  maybe do a ??? after a save?
+#  hack/ workaround
+#     after   self.saveGraph(workingFile)
+#     exec    self.loadGraph(workingFile)
+# works, but is hack
+# TODO remove hack, make err happen, untill i understand WHAT is not happening
+# DONE stripping the code out of loadGraph and making it a func is more troble than its worth
+#  just use loadGraph as is   to fix torn off nets
+#
+#28jan DONE & WORKS begin convert to python 3
 #  22:29  runs with  python3 nodzdemo.py
 #  just indents checked, no print errs seen
 #
-#27jan0202 tiny gap between bezier and left side of socket 'fixed'
-#  likely the calc of painterpath (bez bound box) is rt shifted this amount
-#
-# i made some halcmd shoe pin > compname.pins   files
-# thinking this was beginning of build graph from scratch
-# what doe sit take to load one ( a one comp graph w/o nets )
-# 
 #24jan2022 22:37 V(iew) from a list of node names works ok
-#  when nodes are jammed against top left, not so pretty
-#  may need to add a border value when saving/creating, else pretty good
-# TODO adda view file save, view file load
-#  how to save ? 
-# see this SO answer for using json in and out
-#https://stackoverflow.com/questions/27745500/how-to-save-a-list-to-a-file-and-read-it-as-a-list-type
-#  i tried in a terminal and worked well
-# saving should just save a list of quoted names ["fred","ethel","lucy", "ricky"]
-# loading should just read and set rect and focus on rect
-#  prelim dlog for "load or save" ??
-#  never did a dlog yet
-#TODO theres a bug in the selected area code,
-# one example fails ... gvLoThreshold, gv2offset13.0  
-#   fuzzy idea prob is cuz 2nd item is way above 1st, maybe subtract is ng here
-#   if all nodes in between are in list, then ok
-#   if i skip in between then ng
-#   IF user lassoos the area to view, then the problem doesnt show
+# TODO save the list   i am thinking L S are scene Load Save
+# TODO load the list   and l s are list load save ( views)
 #
-#24jan2022 arrgh did i break hypermedia? 
+# see this SO answer for using json in and out
+#  https://stackoverflow.com/questions/27745500/how-to-save-a-list-to-a-file-and-read-it-as-a-list-type
+#
+#24jan2022 hypermedia
 #  i can still get editor w ^shift left clk on node
 #  phew! ability still there, i hadnet edited in the hypermedia infos  for fname and datattype
-#  NB to get hypermedia  jut dnl clk on ShowMe
+#  NB to get hypermedia  just dbl clk on ShowMe
 #  NB to get editor  use ^ShiftLeftClick on node ( use the yellow bar else you clkd on a slot not node )
 #
-# TODO the saving of views
-#  should save just the node names to fill the screen
-#  not the whole scene pre-zoomed to those nodes
-#  so search selected...
-#   xmpl     for item in self.scene().items(painterPath):
-#                item.setSelected(True)
-#
-# ALSO
-#  after save all, the nets are disconnected until a node gets moved, even a tiny bit
-#  
 #24jan2022
 # YAY now using RTPRESS will del net so normal dragging zoomed out is ok
 # normal LFPRESS will NOT del nets
@@ -52,110 +51,17 @@
 #       #24jan make action conditional with button() == 2 (rt btn)
 #	if(event.button() == QtCore.Qt.RightButton):
 #...
-#24jan also had to rem out whole bottom of code
-#   class ConnectionItem func mousePressEvent
-#  else  ANY btn press would delete a net
-#  i think safe to have just 1 event path from deleting a net
-#  now (24jan2022) rtbtn press on net == delete
+#
 #  TODO CLEANUP
 #
-#22jan cntd look at why F doesnt fit selected nodes into a window that 'just' envelopes those nodes
-# 1) the action of manually selecting (^shiftMetaLeftPress in space)
-#  all then F(ocus) does NOT work always
-# 2) the action od deselectall ( l clk in space )
-#  then F does NOT work ( code sez if none selected then select all then Focus)
-# am i printing the rect of slected or the rect the nodes will be placed into?
-# slot on_nodeSelected 
-# a new run, load, then F   is FIT and topleft test rect dragged shows ~0 ~-150
-#   NOT on all saved scenes!  usually not :-(
-#
-# beware QrectF is x,y,width,height  NOLT x1,y1,x2,y2
-#  this can be seen with any tiny rect, last 2 nums are tiny, 1st 2 depend on loc
-#
-# the initial load goes into world defined by cfg file ( 0,0,3800,2000 )
-# so any element in neg space ( neg X for xmpl ) are not seen ( they are off-screen )
-# i think author never expected ned positions
-# --- if some nodes are neg x, then lasso all, then F, then some nodes ar eoff screen 
-#  --   i must drag whole scene so no nodes are neg
-#  --   AND all must fit inside cfg files width/height
-# --- manual sel all F is better than auto sel all F
-#
-# i think a good idea to justify all ( move to positive x and y )
-#   i had a file x.json where all were pos, but min was > 1000
-#   so i made y.json subrtacting 1000 from evert x position
-#    with y.json ... L then F worked 
-#    ( had extra space on rt  becuz cfg had 5700 width
-#      max x posn was 4381... so 4381+200widgetwidth+100bendybezier=4681
-#      so try 4681 in cfg file
-#      yes that workls but very much mashed up onto left edge
-# Can i begin by making all pos?
-#  key P positive... using ... file or dict?
-# 
-# i think a good idea to save width height in json file NOT in cfg file
-#
-#21jan 
-# re:  the saved view is not what was active when Save issued
-#  it is at least left shifted
-#
-#i need to look at the rect used 'itemsarea'
-# i think i need to see the x y posn
-# so i can compare 'items area to what i see on screen
-# myabe begin with top left  of itemmarea and 
-# be able to meta rt clk get xy posn of mouse
-#
-# if i carefully adjust whole graph so it saves and loads (with sleAll Focus)
-#  then i see the rect is...  near 400 right shifted of 0
-#  while leftmost node is at left edge ( where i thought 0 would be )
-#  bit where i expect 0 is really 371!
-#  NB: i also have cfg.jso chgd to width4000 ( was 2000)
-#  hmmm retired at width2000 and scene was WAY right shifted  huge blank area to left
-#('itemsArea is ', PyQt5.QtCore.QRectF(371.0, 308.0, 3594.0, 1254.0))
-#
-# at width 4000 or gretaer (tested up to 5000) the leftmst node is left edge
-#  AND rightmodt is right edge, so > 4000 not usedfull
-#  and <4000 moves all nodes towards right, leaving empty space on left
-#
-# why 4000?   becuz actual itemArea is ~3600 plus inherent 400 error?
-#  so its some way other value for other graphs?
-#
-# theres something with visible...
-# if some nodes off screen, and i select all and focus
-#   then all is not seen
-# if all is visible on screen, say really small up and left on screen
-#   then slecte all, focus  will zoom to all
-#
-#if i am close to ctr and zoomed WAY in,
-# (like zoomed in till theres only grey space on screen )
-# then ^shiftMetaLeftClkInSpace selectall, Focus works
-#
-# if not on screne ctr, but on some node ctr zoomed way in ( but can clk on space)
-# then selectAll Focus 'works', the zoomed view is ALL but ctrd on clk spot
-#  not all nodes are seen
 #20jan 2300  
 # idea: the views... 
 #  if i had a list of the components in the view
 #  and the unzoomed layout was 'pleasant'
 # then i select the nodes in the list
 #   and do a F(ocus) command
-# well its a good idea, but Focus deosnt work well
-#  same general problem as zoom and pan
-#
-#15jan 10am i saw that ctrl shift l press on node ( near ShowMe)
-# was no reliable in getting scite o open SaveMe file from startup
-# now Noon it seems to always work !?!?
-#
-#14jan almost done restoring and cleaning
-#  after that get the editing func back ?? ctrl l dblclk on node??
-#14jan reduce comments, try to better understand signals and slots
-# 14jan i restored all orig slots and .connects
-#       in case i trampled on something handy
-#
-#14jan ctrl shift l clk on a node 
-#  will toggle teh node's select state
-#  not clean! sometime takes 2 ctl shift l clk before node outline goes orange
-#  also the node will become sel'd but wont de-sel w further ctl shift l press-es
-#   ( node toggles on but wont not off )
-#
+
+
 #14jan orig import from Qt , i use from PyQt5
 from PyQt5 import QtCore, QtWidgets
 import nodz_main
