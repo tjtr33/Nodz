@@ -1,4 +1,5 @@
-Screenshot
+Screenshot![Nodz-lcnc](https://user-images.githubusercontent.com/5028488/151707193-3b31a03d-e214-4ce9-8bf5-708fa93f4f9a.png)
+
 
 Nodz is a very user friendly python library to create nodes based graphs. It can be connected to anything you want as long as it understands python. Nodz does not hold any data other than its own graphics and attributes types as it is used by the graphics. Nods provides you with a very simple way to read your graph, it outputs connections as strings ('Node1.attribute1', 'node2.attribute5')
 
