@@ -1,7 +1,7 @@
 {
     // General > Edit values BUT do not delete.
-    "scene_width": 4681,
-    "scene_height": 2000,
+    "scene_width": 3802,
+    "scene_height": 1084,
     "grid_size": 36,
     "antialiasing": true,
     "antialiasing_boost": true,
@@ -41,7 +41,7 @@
 
     "attr_default": {
         "bg": [160, 160, 160, 255],
-	// 12nov was  "text": [220, 220, 220, 255], no diff seen still fuzzy
+    // 12nov was  "text": [220, 220, 220, 255], no diff seen still fuzzy
         "text": [220, 220, 220, 255],
         "plug": [255, 155, 0, 255],
         "socket": [255, 155, 0, 255]
