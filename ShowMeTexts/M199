@@ -1,0 +1,9 @@
+#!/bin/bash
+# M199 ets max min limits for edm comp 'gv2offset11
+# put this file into /home/tomp/linuxcnc/mcodes
+# EndLimf is the fulldepth of cut
+# RetLimf is a limit to  how far the tool can retract
+# as long as you begin above fulldepth, i think its ok
+halcmd sets EndLimf $1
+halcmd sets RetLimf $2
+exit 0

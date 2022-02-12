@@ -1,4 +1,6 @@
 {
+    // your choice of editor
+    "chosen_editor": "scite",
     // General > Edit values BUT do not delete.
     "scene_width": 3802,
     "scene_height": 1084,

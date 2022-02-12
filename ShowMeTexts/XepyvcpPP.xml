@@ -1,0 +1,41 @@
+<!-- 21oct2021 XepyvcpPP.xml  reduced to 2 leds and vbar -->
+<!-- to test   run halcmd   then  enter... halcmd: loadusr pyvcp -c mypanel /pathto/XepyvcpPP.xml -->
+
+<pyvcp>
+  <vbox><!-- begin vbox for all -->
+        <hbox>
+	  <rectled>
+            <halpin>"SparkedOutL"</halpin>
+            <height>"40"</height>
+            <width>"40"</width>
+            <on_color>"green"</on_color>
+            <off_color>"grey"</off_color>
+          </rectled>
+          <rectled>
+            <halpin>"ArcedOutL"</halpin>
+            <height>"40"</height>
+            <width>"40"</width>
+            <on_color>"red"</on_color>
+            <off_color>"grey"</off_color>
+          </rectled>
+	</hbox><!-- end vbox w 2lbl & 2 big led -->
+        
+        <hbox>
+          <boxfill fill="both"/>
+          <boxexpand expand="TRUE"/>
+      
+          <bar>
+            <halpin1>"EdmPosn"</halpin1>
+            <halpin2>"RetLim"</halpin2>
+            <halpin3>"EndLim"</halpin3>
+            <canvas_height>500</canvas_height>
+            <canvas_width>90</canvas_width>
+            <bar_height>500</bar_height>
+            <bar_width>90</bar_width>
+            <bgcolor>'yellow'</bgcolor>
+            <format>'3.3f'</format>
+	  </bar>
+        </hbox>
+
+  </vbox>  
+</pyvcp>

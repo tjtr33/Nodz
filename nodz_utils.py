@@ -1,3 +1,4 @@
+#10feb2022 this file is clean
 import os
 import json
 import re
@@ -7,20 +8,6 @@ import re
 from PyQt5 import QtCore, QtGui
 
 
-#03dec2021
-# i want to use the 'alternate' attribute for another purpose
-# i want to use it as a filename to be loaded when node is dbl clicked
-#  needs study to see if alternate is same thing as item of concern
-# well, 'alternate' orig is read from default_config.json
-# and it only appears once   alternate = 20
-# so its pretty much a constant, and is not neccesary
-# i can rem the 3 uses of 'alternate' and loose nothing
-#
-#06dec i see alternate slots have diff color bg's  grey or black
-# its due to the chg on 03dec ^^
-# TODO find out whre the bg chgs and make it consistant, not alternating
-# hahah this happened when messing with attrib 'alternate'
-#
 def _convertDataToColor(data=None, alternate=False, av=20):
     """
      Convert a list of 3 (rgb) or 4(rgba) values from the configuration
@@ -40,25 +27,11 @@ def _convertDataToColor(data=None, alternate=False, av=20):
     # rgb
     if len(data) == 3:
         color = QtGui.QColor(data[0], data[1], data[2])
-        #03dec2021  this vvv could be rem-ed, i dont use it
-        #if alternate:
-        #    mult = _generateAlternateColorMultiplier(color, av)
-        #
-        #
-        #    color = QtGui.QColor(max(0, data[0]-(av*mult)), max(0, data[1]-(av*mult)), max(0, data[2]-(av*mult)))
         return color
 
     # rgba
     elif len(data) == 4:
         color = QtGui.QColor(data[0], data[1], data[2], data[3])
-        #03dec2021 this vvv could be rem-ed, i dont use it
-        #if alternate:
-        #    mult = _generateAlternateColorMultiplier(color, av)
-        #    color = QtGui.QColor(max(0, data[0]-(av*mult)), max(0, data[1]-(av*mult)), max(0, data[2]-(av*mult)), data[3])
-        #
-        #06dec what is format of 'color' ?
-        #06dec  printing got me an empty dict  '{}'
-
         return color
 
     # wrong
@@ -67,35 +40,7 @@ def _convertDataToColor(data=None, alternate=False, av=20):
         print('Can only be [R, G, B] or [R, G, B, A]')
         print('Using default color !')
         color = QtGui.QColor(120, 120, 120)
-        #03dec2021 this vvv could be rem-ed, i dont use it
-        #if alternate:
-        #    color = QtGui.QColor(120-av, 120-av, 120-av)
         return color
-
-
-#03dec2021 neutered ( not called and non existant )
-# i want to use 'alternate' as a filename to be loadGraph'ed when node is dbl clicked
-# this vvv code is only called by ^^^ code and &&& code ^^^ does not need the 'alternate; if modified accord to notes above
-# so this VVV code can be rem-ed out as well as ^^^ code
-
-#def _generateAlternateColorMultiplier(color, av):
-"""
-     Generate a multiplier based on the input color lighness to increase
-     the alternate value for dark color or reduce it for bright colors.
-
-     :param color: Input color.
-     :type  color: QColor.
-
-     :param av: Alternate value.
-     :type  av: Int.
-
-"""
-"""
-    lightness = color.lightness()
-    mult = float(lightness)/255
-
-    return mult
-"""
 
 def _createPointerBoundingBox(pointerPos, bbSize):
     """
@@ -176,10 +121,6 @@ def _saveData(cfilePath, data):
      :type  data: Dict or List.
 
     """
-    #strg1="in _saveData, cfilePath is "
-    #strg2=cfilePath
-    #strg3=strg1+strg2
-    #print(strg3)
     
     f = open(cfilePath, "w")
     f.write(json.dumps(data,
@@ -196,17 +137,10 @@ def _loadData(dfilePath):
      :type  filePath: Str.
 
     """
-    #strg1="in _loadData, dfilePath ="
-    #strg2=dfilePath
-    #strg3=strg1+strg2
-    #print(strg3)
     
     with open(dfilePath) as json_file:
         j_data = json.load(json_file)
 
     json_file.close()
-
-    #10nov reduce clutter
-    #print("Data successfully loaded !")
     
     return j_data

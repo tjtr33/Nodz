@@ -1,0 +1,3 @@
+!#wolverine
+#hal script to set a value
+setp ferniggle,2

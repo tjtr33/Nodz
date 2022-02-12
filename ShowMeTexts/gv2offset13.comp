@@ -1,0 +1,281 @@
+component gv2offset13 "controls position of tool using external volatge ( or sim) Used for sink/drillgrind edm";
+// 19oct cleaned version runs well no xtra motion ledsa ok (slow) bar graph ok (slow)
+//   maybe pyvcp was better respomse?
+//
+// 19oct very clean works well
+// 19oct TODO  
+//		purge the LIB:basic_sim.tcl mess
+//		stop&look& return to cut   make safe to touch tool, to chg tool, to zero w tool?
+//		manual abort(killgen dont move)  
+//		manual abort (kill gen and rtn to startpos) 
+//		cut with absolute dimensions, not relative
+//		cut any direction
+//		cut dihedrals
+//		orbit
+//		sequence gen and orbit radii from tech
+//
+//18oct2021  dont begin sim_basic.tcl tickle purge untill gv2offset12 is cleaned
+
+// -------------------------- pins, param, variables -------------------------
+
+// 19oct exit criteria
+pin in    float    monitor "monitor, a pin cnxd to axis.z.eoffset.Watched for tool arrived at start posn";
+
+// 19oct chg from pin to var
+variable  bool     waitAxisLeoffsetNill; // var waitingAxisLeofsetNill, TRUE when tool has arrived at start posn";
+
+// 18oct  position stuff
+pin in    float    EndLim "EndLim, pin with distance the tool can cut to. Relative to start posn";
+pin in    float    RetLim "RetLim, pin with distance the tool can retreat past start posn. Relative to start posn";
+
+pin out   float    EDMoffset "EDMoffset, pin with reuested tool position based on Gap voltage";
+param rw  float    unitOfChange "UnitOfChange, param of unit position change, usually as small as possible to move";
+
+// 18oct state machine and control stuff
+
+
+//11jan2022 this was skipped when making json file fro nodz_demo.py
+//  it was missed becuz its 'io'   not in  not out
+//  i only noticed ecuz M197 was not asked for in the digraph
+//  does it need to be 'io'?
+// i could chg the pin to 'in' here
+//   or chg the code to treat 'io' like an in
+//   or figure how to allow io pins in the code
+// was it listed in halcms show sig?  as io  or what?
+//
+// i think its ok as an in pin
+// iirc i made it io so this module could turn it on and off
+// but now M197 simply sets it, sleeps, resets it
+// so
+//11jan2022 chg Ena from io to in
+//pin io    bit      Ena "Ena, pin that triggers the state nachine managing the EDM tool position";
+pin in    bit      Ena "Ena, pin that triggers the state nachine managing the EDM tool position";
+
+// 	19oct  doesnt not need to be a pin could be a var u32 state = 0;
+pin out   s32      state = 0 "state, pin with index for state machine, exposed for debug";
+
+pin out   bit      eoffsetClear "eoffsetClear, pin with msg to axis.l , wanting all internal counters to be cleared";
+
+pin out   bit      ena4axisLeoffsetEnable "ena4axisLeoffset-enable, a pin enable for axis.N.eoffset-enable   NOT related to gv2offsetNN.Ena";
+
+
+// 18oct EDM process stuff
+pin in    bit      GapVhi "GapVhi, a pin active when a high voltage is detected at gap, should cause tool to advance";
+pin in    bit      GapVlo "GapVlo, a pin active when a low voltage is detected at gap, should cause tool to retreat";
+
+
+// 18oct timer/counter constraints
+pin in    float    SparkedOutTimeLimit "SparkedOutTimeLimit, pin with num cycle counts to qualify SparkedOut. Only contiguous counts while at EndLimit position";
+variable  float    SparkOutCounts;      // this is the runtime accumulator  how many contigous cycles at EndLim
+pin out   bit      SparkedOutFlag "SparkedOutFlag, pin with msg tool has sat at EndLim without and GvLo signals for SparkedOutTimeLimit";
+
+pin in    float    ArcedOutTimeLimit   "ArcedOutTimeLimit, pin with num of contiguous GvLo signals to qualify ArcedOut";
+variable  float    GvLoCounts;        // the runtime accumulator   how many contiguous GvLo signals 
+pin out   bit      ArcedOutFlag "ArcedOutFlag, pin with msg tool has accumulated ArcedOutTimeLimit counts ( contiguous), abort inevitable";
+
+
+// 18oct the EDM cut occurs while lcnc in PAUSEm so thes halui.program pins are manipulated
+pin out   bit      pgmResume "pgmResume, pin connected to halui.program.resume, the edm cut occurs during a pause";
+pin out   bit      pgmPause "pgmPause, a pin connected to halui.program.pause, the edm cut occurs duringa pause";
+pin out   bit      pgmAbort "pgmAbort, a pin connected to halui.abort, used if the cut fails due to too manu contiguos GvLo signals";
+
+// --------------------- end of declarations---------------------------------------------
+
+
+// --------------------- begin code --------------------------------------------------
+function _;
+license "GPL";                                                          
+;;
+
+FUNCTION(_) {
+	switch (state)
+	{
+		case 0: // idle state.  waiting for Ena  M197 turns it on and then off ( toggles it )
+			// state 0 can goto to state 1 ( if stimulus GapVhi or GapVlo rcvd )   or state 0 ( if no GapVhi or GapVlo ( OR if neither true  ?? useful?? )
+			
+			if(Ena)
+			{       // 18oct  ----------------- init flags and counters----------------------------
+
+				EDMoffset = 0.0; // init to 0 eoffset
+				
+				waitAxisLeoffsetNill = FALSE; // waitAxisLeoffsetNill  is cleared here in state 0   and set set in exit state 4 or 5 before exit
+				
+				ena4axisLeoffsetEnable = TRUE;//  TRUE in state 0,  and FALSE in state 4 or 5 ( exit states)
+				
+				// eoffsetClear   control over axis.L.  eoffset subsystem    clears the calculated eoffset
+				//   NECCESARY to clear on 1st pass through state machine, else imprecise depth and final position seen   see axis.L docs
+				//   True in state 0    False in state 1   TRUE again when exitinf in state 4 or 5     (must be toggled )
+				eoffsetClear = TRUE;
+
+				SparkedOutFlag = FALSE;
+				ArcedOutFlag = FALSE;
+				
+				SparkOutCounts = 0;
+				GvLoCounts = 0;
+				
+				//  this combintion puts interpreter into PAUSE mode,    RESUME mode will be set at EXIT
+				// 18oct NB halui.program.pause and .resume are FALSE before an ngc programis run
+				pgmResume  = FALSE;
+				pgmPause = TRUE;
+				pgmAbort = FALSE;
+
+				// since we rcvd Ena, goto next state
+				state = 1;
+				break;
+				
+			} else { // else Ena not rcvd
+				
+				state = 0; // go back and wait for Ena
+				break;
+			}
+			
+		case 1: // got the Ena     means M197 was execed    so, watch for GapVhi or GapVlo signals
+			//  this state (1)     can goto state 2   or   3 ,  or    stay at 1
+		
+			// begin using eoffset, do not wipe the value,  wiping was done in state 0 already
+			eoffsetClear = FALSE;
+		
+			// get the values of GapVhi and GapVlo,   and adjust   gv2offsetNN.0.eoffset  accordinglye
+			//   NB the absence of both signals means "don't move",   a very special state,  not easily seen in code,  but halscope can vusualize
+			//       the 'dont move' state is an equilibrium, an 'i'm busy working and all is fine"
+			if (GapVhi == TRUE) {
+				// if GapVhi, then clear the GapVlo counters
+				GvLoCounts = 0.0;
+				
+				state = 2; //  proceed to the  'middle of cut and got GapVhi'   state 2
+				break;
+			}
+			
+			if (GapVlo == TRUE) {
+			        // if GapVlo, then clear the Sparkout counter
+				SparkOutCounts = 0.0;
+				
+				state = 3;  // goto 'in middle of cut and got GapVlo' state 3
+				break;
+			}
+			
+			// else (neither GapVhi or GapVlo )   dont chg state
+			state = 1; // be literal,   it may not be obvious
+			break;
+			
+		case 2: // in middle of cut  got GapVhi 
+			// NOTE  this state can goto 4 ( at depth check sparkout timer ) or 1 (wait adv or ret)
+		
+			// adjust eoffset request AND clip request to limits
+			if( EDMoffset > EndLim ) {
+				EDMoffset = EDMoffset - unitOfChange;
+
+				if ( EDMoffset < EndLim ) {  // clip EDMoffset request to EndLim
+					EDMoffset = EndLim;
+				}
+			}
+
+			// if at EndLim (final destination), go check how long the tool is contiguously in this position ( w/o GapVlo  sgls )
+			if ( EDMoffset == EndLim ) {
+				state = 4;  // goto atDepth 
+				break;
+			} else {
+				state = 1;  // go back and wait for GapVhi or GapVlo signals
+				break;
+			}
+			
+		case 3: // in middle of cut  got GapVlo
+						
+			// state 3 can goto state 5 ( at bot check arcout time ) or  state 1 ( wait for adv ret )
+			// arcedout does not require posn at retlim. just contiguous counts
+			
+			// ------------position checks and adjustments------------------------
+			// only  inc edmoffset if at NOT at/past RetLim
+			if ( EDMoffset < RetLim ) {
+				EDMoffset = EDMoffset + unitOfChange;
+				
+				if ( EDMoffset > RetLim ) {  // clip EDMoffset request tp RetLim
+					EDMoffset = RetLim;
+				}
+			}
+			
+			// ---------------time/count checks and adjustment -----------------
+			
+			// inc GvLoCounts 
+			if ( GvLoCounts < ArcedOutTimeLimit ) {
+				GvLoCounts = GvLoCounts + 1;
+			}
+			
+			// test GvLoCounts against ArcedOutTimeLimit
+			if ( GvLoCounts >= ArcedOutTimeLimit ) {
+				state = 5; // chg state from herer 3   to 5  
+				break;
+			} else {
+				state = 1;
+				break;
+			}
+			
+		case 4: // now at depth ,  inc SparkOutCounts and check for SparkedOut
+
+			if( SparkOutCounts < SparkedOutTimeLimit) {  // if not sparked out  in count and goback wait adv ret
+				SparkOutCounts = SparkOutCounts + 1;
+
+				state = 1;
+				break;
+			} else { // else SparkedOut      begin cleanup, stop EDM gap motion,  request tool return to start position
+				if ( waitAxisLeoffsetNill == FALSE ) {  // if not yet waiting tool return to start position
+					ArcedOutFlag = FALSE;
+					EDMoffset = 0.0;      // request tool return to start posn
+					waitAxisLeoffsetNill = TRUE;// flag waiting for tool to return to start position
+
+					state = 4;
+					break;
+				} else {// else  already waiting for tool to return to start position,  so check if tool arrived at start position ( monitor == start posn )
+					// 15 oct this is the code that waits for SparkedOut tool to return to startposn
+					if ( (monitor < unitOfChange ) && (monitor > ( 0 - unitOfChange))  )  {  // cant say == 0.0   rundung!   so check it is damn small
+						// 19 oct move led setting when exit occurs
+						SparkedOutFlag = TRUE;     
+						ArcedOutFlag = FALSE;
+						
+						pgmResume  = TRUE; // because the program should continue if cut successful
+						pgmPause = FALSE;
+
+						// set state AFTER everything else
+						state = 0;  //  go wait for a new cut in state machine
+						break;
+					} else { //  tool has not yet arrived at start position, go wait some more 
+
+						state = 4;
+						break;
+					}
+				}
+			}
+			
+		case 5: // this state is low voltage for too long ,it is fatal   this state can only exit
+			// 17oct if here  GvLoCounts >= ArcedOutTimeLimit    
+			
+			EDMoffset = 0.0;// request tool return to start position
+			
+			// 19oct the only further requisite for exit is ArcedOut tool very close to start porn
+					
+			if ( (monitor < unitOfChange ) && (monitor > ( 0 - unitOfChange))  )  {
+				// 19 oct always set led pair as opposed
+				ArcedOutFlag = TRUE;
+				SparkedOutFlag = FALSE;     
+				
+				pgmResume  = FALSE;
+				pgmPause = FALSE;
+				pgmAbort = TRUE;
+												
+				state = 0;  // all done tool back at start position    so  go wait for a new cut
+				break;
+			} else {
+				waitAxisLeoffsetNill = TRUE;
+				state = 5; // stay in this state until tool back at start position (loop)
+				break;
+			}
+			
+		case 10:
+		default:    // dummy state  honeypot catchall this looks safe  but i dont see how i could get here
+			state = 10; // get stuck here
+			// need good msg
+			rtapi_print_msg(RTAPI_MSG_ERR, "Error  in gv2offsetNN - now hung - contact author with howto replicate, sorry, thanks\n");
+			state = 10; // really really stuck here
+			break;
+	} // end state machine case swx 
+}

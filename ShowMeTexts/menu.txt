@@ -1,0 +1,84 @@
+Menu Guide Notes for Nodz4hal
+
+------what it does -----------------------------
+Nodz4Hal will use info about a linuxcnc configuration to make a
+di-graph( directed graph ). This program can make it easier to 
+understand what the .hal (and other ) files ask LinuxCNC to do.
+I think lengthy .hal files are difficult to imagine, so I used 
+Nodz by LeGoffLoic to build these graphs.
+
+-----------initial workflow  neccesary to begin------
+  Run LinuxCNC
+  Open a terminal and type
+    cd
+    cd <path/to/Nodz4hal>
+    halcmd show sig > myfile.signals
+    python3 nodz_demo.py
+    C
+    using file selector, open myfi;e.signals
+    create a filename to save the converted information   mynodz
+    L
+    pen the file mynodz.jsn ( .json was automatically added )
+    you now have a rats nest diagram of your system with all nets 
+    drag the nodes( boxes ) with most nets closer to each other
+    drag nodes with only one output toward left of the connected node
+    continue moving nodes until it makes sense to you (the creator)
+    S
+    save the file ( pick the name from the list , agree to overwrite )
+    exit Nodz4Hal, exit Linuxcnc
+    You now can run Nodz4Hal and continue editing when you like.
+    
+------choose your editor------------------------
+Edit the very top of default_config.json to use your preferred editor.
+I chose SCiTE so mine looks like this
+"""
+{
+    // your choice of editor
+    "chosen_editor": "scite",
+    // General > Edit values BUT do not delete.
+
+"""
+You will use your editor to untwist the nets in the rat's nest 
+
+----------commands -------------------------------
+interaction uses keys and mouse
+
+undo?    doesnt exist, so save often
+
+quit     the X btn in top right of window
+
+change window size   as you like, but a 'L' or 'l' or 'F' will make it look nicer
+
+key/mouse mod1  mod2 mod2 type    where        action
+    left  shift ctrl meta clk     space  select everything                  
+    left                  clk     space  de-select everything               
+
+    left  shift           drag    space  lasoo nodes and thier nets
+    left                  drag    area   drag selection, drop when done
+
+    right                 clk     net    delete net( happens on release )
+    left                  drag    '>'    drag a net, drop on socket
+
+    left  shift ctrl      dbl clk node   edit the main file
+    left                  dbl clk ShowMe display linked hypermedia   
+
+    middle           alt  drag    any    Pan scene  
+    
+M/m                                      view menu in editor    
+L                                        loads a graph
+l                                        loads a view ( a list of nodes )
+S                                        saves a graph (appends .json)
+s                                        saves a view ( appends .json )
+F                                        fits selected nodes in view
+R                                        restore original scaling 
++                                        zoom in
+-                                        zoom out
+
+--------------------- suggestion for storing files ----------
+I suggest a folder for each graph and in it
+  in thst directory...
+    keep the halcmd show sig file
+    a directory of ShowMeTexts fro mcodes, bash perl tcl python scripts fro reference
+    a dirctory of ShowMePix for svg's of schmatics, jpegs pngs of hdwr items
+    a directory of Views to store and retrieve views
+

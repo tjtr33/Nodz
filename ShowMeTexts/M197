@@ -1,0 +1,7 @@
+#!/bin/bash
+# starts edm ctcle, which begins HERE and ends HERE
+# the signal must be toggled TRUE then FALSE 
+# this can be halscoped if a fast thread is used ( faster than servo thread )
+halcmd setp gv2offset13.0.Ena TRUE
+halcmd setp gv2offset13.0.Ena FALSE
+exit 0

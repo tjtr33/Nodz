@@ -1,0 +1,16 @@
+#!/bin/bash
+# M198 sets time limts for ArcedOut and SparkedOut
+# it not really time, but a count that occurs every servo loop
+# TODO implement real time in microseconds, IIRC the time for a servo loop os not a constant ( latency and maybe more )
+# put this file into /home/tomp/linuxcnc/mcodes
+# 
+#SparkedOutCountsRequired is a measure of 'time' (see above) needed to qualify for Sparked Out
+# SparkedOut irefers to the toll arriving at the destination, a not seeing any Retract signals for aan amount of time specified by SparkedOutCountsRequired
+# the state of SparkedfOut means there is no more stock left to cut
+#
+# ArcedOutCountsRequied is a number of cycle counts that qualified the cut as ArcedOut
+# ArcedOut occurs when enough contiguos LowGv signal are accumulated towarrant aborting the attempted cut
+# TODO the occurance of an ArcedOut state, could trigger a toolchange to a 'fresh' tool and continue the program
+halcmd sets SparkedOutCountsRequired $1
+halcmd sets ArcedOutCountsRequired $2
+exit 0

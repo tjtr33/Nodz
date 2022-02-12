@@ -1,0 +1,6 @@
+#!/bin/bash
+# sets window comparator thresholds in component randomGV,  thresholds are floats >0 and <100
+# 10oct  in any M1nn , the  P and Q are ALWAYS floats
+halcmd setp randomGV.GvHiThreshold $1
+halcmd setp randomGV.GvLoThreshold $2
+exit 0
