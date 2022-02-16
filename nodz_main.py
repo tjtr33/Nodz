@@ -1,4 +1,4 @@
-#110feb2022 this file is clean
+#13feb2022 this file is clean
 # meaning outstanding TODOs in nodz_demo.py  leave some notes & posible code chgs here
 import os
 import re
@@ -536,6 +536,17 @@ class Nodz(QtWidgets.QGraphicsView):
 
         super(Nodz, self).mouseReleaseEvent(event)
      
+
+    #14feb remove redundant code, create new func
+    #14feb rtn value never used @
+    #def calcScale(self):
+    #    w = self.sceneRect().width()
+    #    h = self.sceneRect().height()
+    #    spoint=self.mapFromScene(w,h)
+    #    sw=spoint.x()
+    #    sh=spoint.y()
+    #    return( sw/w )
+
     def keyPressEvent(self, event):
         #class Nodz func keyPressEvent()
         """
@@ -572,39 +583,15 @@ class Nodz(QtWidgets.QGraphicsView):
         if event.key() == QtCore.Qt.Key_Plus:
             self.scale(1.03,1.03)
             self.currentState = 'DEFAULT'
-
-            #10feb2022 this 'calcscale()' code is repeated 2x
-            #  it can become a func
-            
-            #the current scale can be calcd from self.sceneRect()
-            # in view coords vs in scene coords
-            # the current scale is   viewWidth / sceneWidth
-            w = self.sceneRect().width()
-            h = self.sceneRect().height()
-
-            spoint=self.mapFromScene(w,h)
-            #10feb2022 i just wanted the 2 data so used 'point'
-            #  it is not properly a point, but works for my purpose
-            #  whichis get w,h in scene coords as well as view coords
-            #  so i can calc scale
-            sw=spoint.x()
-            sh=spoint.y()
-            #09feb the ratio of viewWidth / scebeWidth is THEscale
-            THEscale = sw/w
+            #14feb new func works fine, but THEscale is never used #
+            #THEscale=self.calcScale()
             
         if event.key() == QtCore.Qt.Key_Minus:
             #09jan2022 ZOOM OUT works  either keypad or '-'
             self.scale(0.970873786408,0.970873786408)
             self.currentState = 'DEFAULT'
-
-            #the current scale can be calcd from self.sceneRect()
-            # in view coords / scene coords
-            w = self.sceneRect().width()
-            h = self.sceneRect().height()
-            spoint=self.mapFromScene(w,h)
-            sw=spoint.x()
-            sh=spoint.y()
-            THEscale = sw/w
+            #14feb new func works fine, but THEscale is never used #
+            #THEscale=self.calcScale()
 
         #09jan2022
         # R  RESIZE  restore full size   not very usefuL
@@ -889,6 +876,7 @@ class Nodz(QtWidgets.QGraphicsView):
                     #30jan load after save to reconnect all nets to nodes
                     #05feb2022 loadgraph rtns w,h
                     #09feb why am i loading in the save func?
+                    #  A: just to get w,h, amybe i can save somewhere...
                     w,h = self.loadGraph(workingFile)
                     self.updateSceneRect(QRectF(0, 0, w, h))
 
@@ -929,38 +917,53 @@ class Nodz(QtWidgets.QGraphicsView):
                 fileNameToOpen = self.getFileNameForOpen()
                 if fileNameToOpen:
                     w,h= self.loadGraph(fileNameToOpen)
-                    
                     workingFile = fileNameToOpen
+
                     
-                    #10feb2020  vvv is necc?
+                    #10feb2020  vvv is necc? YES 16feb2022
                     #09feb this vvv got me access to spindle nodes 
                     self.scene().setSceneRect(0, 0, w, h-600)
-                    self.updateSceneRect(QRectF(0, 0, w, h))
+                    #16feb TESTING this vvv is not necc, leave rem'd code while tsting
+                    #self.updateSceneRect(QRectF(0, 0, w, h))
+
+
+                    #16feb beg        see whole graph on 'L'oad
+                    #  open the graph and get list of nodenames
+                    #  sel all nodes in graph....
+                    #  call focus
+                    #  de-sel all after 'l'oading
+                    nodes = self.scene().nodes.keys()
+                    for thisNode in nodes:
+                        self.scene().nodes[thisNode].setSelected(True)
+                    self._focus()
+                    for thisNode in nodes:
+                        self.scene().nodes[thisNode].setSelected(False)
+                    #16feb end        see whole graph n 'L'oad
+                    
+                    #16feb2022 the 'L'oaded graph does not show while graph in view
+                    #14fen add fname to title bar  cool! it works
+                    self.setWindowTitle(workingFile)
 
             elif event.modifiers() == QtCore.Qt.NoModifier:
                 # 01feb2022 this is 'l'   load view, just a list of node names to fill viewport
 
                 viewNameToOpen = self.getFileNameForOpen()
                 if viewNameToOpen:
-                    
+                    #  open view type file and json read -> data
+                    #  de-sel all before selecting only wanted nodes
+                    #  select nodes from file ( a subset of all nodes)
+                    #  call focus
+                    #  de-sel all after 'l'oading
                     nodesToView = []
                     with open(viewNameToOpen) as json_file:
                         nodesToView = json.load(json_file)
                     json_file.close()
-                    
-                    #10feb de-sel all before selecting only wanted nodes
                     nodes = self.scene().nodes.keys()
                     for thisNode in nodes:
                         self.scene().nodes[thisNode].setSelected(False)
-
-                    #10feb select nodes from file
                     for thisNode in nodesToView:
                         self.scene().nodes[thisNode].setSelected(True)
-                        
-                    #10feb now call focus
                     self._focus()
-
-                    #11feb de-sel all after 'l'oading
                     for thisNode in nodesToView:
                         self.scene().nodes[thisNode].setSelected(False)
 
@@ -1034,7 +1037,7 @@ class Nodz(QtWidgets.QGraphicsView):
 
     def _getSelectionBoundingbox(self):
         #class Nodz func _getSelectionBoundingbox
-        #03feb2022 TODO is this used? 
+        #03feb2022 TODO is this used? YES in _focus()
         #  can this func replace redundant code?
         """
          Return the bounding box of the selection.
@@ -1149,7 +1152,9 @@ class Nodz(QtWidgets.QGraphicsView):
         # Setup scene. NB initially crazy eaxaggerated area from default_config
         scene = NodeScene(self)
         #30jan try to use calc'd width height from loadraph ( to b e coded still 30jan2022)
-        #  use code for w h from default_config.json  
+        #  use code for w h from default_config.json 
+        #14feb i chg from 3802x1024 to 1024x768 does not look like a problem
+        #  i will leave for now ( i think SOME default is ok )
         sceneWidth = config['scene_width']
         sceneHeight = config['scene_height']
         scene.setSceneRect(0, 0, sceneWidth, sceneHeight)
@@ -2351,19 +2356,42 @@ class NodeItem(QtWidgets.QGraphicsItem):
             #  if cnxnside == left  (gets <) 
             #  or cnxnside = right ( gets >)
             # else no hint ( slot is not a net source (
-            
+            #14feb added datatype bit float u32 s32 to displayed name
             if (attrData['cnxnSide'] == "left" ):
-                strg=name
+                strg1=name
+                strg2=""
+                if attrData['dataType'] == "<type 'float'>":
+                    strg2=" f"
+                elif attrData['dataType'] == "<type 'u32'>":
+                    strg2=" u32"
+                elif attrData['dataType'] == "<type 's32'>":
+                    strg2=" s32"
+                elif attrData['dataType'] == "<type 'bit'>":
+                    strg2=" bit"
+                    
+                strg3=strg1+strg2
+                
                 if attrData['plug'] == True and attrData['socket'] == False:
-                    strg="<"+name
+                    strg3="<"+name
                 #painter.drawText(textRect, (QtCore.Qt.AlignLeft | QtCore.Qt.AlignBottom), name)
-                painter.drawText(textRect, (QtCore.Qt.AlignLeft | QtCore.Qt.AlignBottom), strg)
+                painter.drawText(textRect, (QtCore.Qt.AlignLeft | QtCore.Qt.AlignBottom), strg3)
             elif (attrData['cnxnSide'] == "right" ):
-                strg=name
+                strg1=name
+                strg2=""
+                if attrData['dataType'] == "<type 'float'>":
+                    strg2=" f"
+                elif attrData['dataType'] == "<type 'u32'>":
+                    strg2=" u32"
+                elif attrData['dataType'] == "<type 's32'>":
+                    strg2=" s32"
+                elif attrData['dataType'] == "<type 'bit'>":
+                    strg2=" bit"
+                    
+                strg3=strg1+strg2
                 if attrData['plug'] == True and attrData['socket'] == False:
-                    strg=name+">"
+                    strg3=strg3+">"
                 #painter.drawText(textRect, (QtCore.Qt.AlignRight | QtCore.Qt.AlignBottom), name)
-                painter.drawText(textRect, (QtCore.Qt.AlignRight | QtCore.Qt.AlignBottom), strg)
+                painter.drawText(textRect, (QtCore.Qt.AlignRight | QtCore.Qt.AlignBottom), strg3)
             else:
                 painter.drawText(textRect, QtCore.Qt.AlignHCenter, name)
             #orig  painter.drawText(textRect, QtCore.Qt.AlignVCenter, name)
